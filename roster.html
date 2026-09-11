@@ -81,6 +81,11 @@ a{color:var(--gold)}
       which usually means someone mistyped their IGN.
     </div>
 
+    <div style="display:flex;gap:.6rem;margin-top:1.25rem">
+      <a href="index.html"><button class="mini">← Registration</button></a>
+      <button class="mini" id="lock">Lock</button>
+    </div>
+
     <div class="sec-title">Week of <span id="wk">–</span></div>
     <div class="card" id="list"></div>
   </div>
@@ -89,7 +94,7 @@ a{color:var(--gold)}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCUJfamdNNdK9MbuYUk_5cZJj6ncrO5_6E",
@@ -246,12 +251,19 @@ async function unlock(){
   if (!pw) return;
   try {
     await signInWithEmailAndPassword(auth, 'kevinpom9991@gmail.com', pw);
-    $('gate').classList.add('hidden');
-    $('panel').classList.remove('hidden');
   } catch (e) {
     $('gate-err').textContent = 'Wrong password.';
     return;
   }
+  await enter();
+}
+
+let entered = false;
+async function enter(){
+  if (entered) return;          // auth state also fires right after a manual unlock
+  entered = true;
+  $('gate').classList.add('hidden');
+  $('panel').classList.remove('hidden');
   try {
     await load();
   } catch (e) {
@@ -259,6 +271,11 @@ async function unlock(){
   }
 }
 
+// Firebase keeps the session in this browser, so an admin who unlocked on the
+// registration page lands here already signed in.
+onAuthStateChanged(auth, user => { if (user) enter(); });
+
+$('lock').onclick = () => signOut(auth).finally(() => location.reload());
 $('go').onclick = unlock;
 $('pw').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
 </script>
