@@ -251,6 +251,27 @@ a{color:var(--brass)}
   *{animation:none!important;transition:none!important}
   #enter-overlay .eo-title .sever::after{transform:scaleX(1)}
 }
+
+/* -- IGN autocomplete -- */
+.ign-wrap{position:relative}
+.ign-ac{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;
+  background:var(--bg-card);border:1px solid var(--border-hi);
+  max-height:244px;overflow-y:auto;display:none;
+  box-shadow:0 14px 34px rgba(0,0,0,.62)}
+.ign-ac.open{display:block}
+.ign-ac-item{display:flex;align-items:center;gap:8px;padding:9px 13px;cursor:pointer;
+  font-size:14px;color:var(--text1);border-bottom:1px solid var(--border);transition:background .12s}
+.ign-ac-item:last-child{border-bottom:none}
+.ign-ac-item:hover,.ign-ac-item.active{background:var(--bg-hover)}
+.ign-ac-item.active{box-shadow:inset 2px 0 0 var(--gold)}
+.ign-ac-item b{color:var(--gold);font-weight:500}
+.ign-ac-item .done{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--success);border:1px solid rgba(107,155,120,.3);
+  background:rgba(107,155,120,.1);padding:1px 6px;white-space:nowrap}
+.ign-ac-empty{padding:9px 13px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--text3)}
+.ign-hint{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.04em;margin-top:6px;min-height:1em}
+.ign-hint b{color:var(--warn);font-weight:500;cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -327,7 +348,13 @@ a{color:var(--brass)}
 
       <div class="field">
         <label>In-Game Name</label>
-        <input type="text" id="f-name" placeholder="Your IGN" maxlength="30" autocomplete="off">
+        <div class="ign-wrap">
+          <input type="text" id="f-name" placeholder="Start typing your IGN..." maxlength="30"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox"
+                 aria-expanded="false" aria-autocomplete="list" aria-controls="ign-ac">
+          <div class="ign-ac" id="ign-ac" role="listbox"></div>
+        </div>
+        <div class="ign-hint" id="ign-hint"></div>
       </div>
 
       <div class="field">
@@ -1268,6 +1295,173 @@ if (allow3d) {
       hero.style.transform = `perspective(800px) rotateY(${(x * 3).toFixed(2)}deg) rotateX(${(-y * 3).toFixed(2)}deg)`;
       rafId = null;
     });
+  });
+}
+
+/* -- IGN autocomplete -------------------------------------------------
+   Suggests names already in the roster so returning players pick their
+   existing spelling instead of creating a near-duplicate. Prefix matches
+   rank above substring matches; hidden names never appear.             */
+{
+  const AC_ROSTER_START = '2026-08-17';   // must match gw_report.py
+  const input = document.getElementById('f-name');
+  const box   = document.getElementById('ign-ac');
+  const hint  = document.getElementById('ign-hint');
+
+  let known = [];      // [{name, lower, weeks, last}]
+  let items = [];      // currently rendered suggestions
+  let active = -1;
+
+  const norm = v => v.trim().toLowerCase();
+
+  (async () => {
+    try {
+      const gwSnap = await get(ref(db, 'guild_wars'));
+      let blockVal = {};
+      try { blockVal = (await get(ref(db, 'roster_blocklist'))).val() || {}; } catch (e) {}
+      const gw = gwSnap.val() || {};
+      const blocked = new Set(Object.values(blockVal).map(v => String(v).toLowerCase()));
+      const seen = new Map();
+      for (const wk of Object.keys(gw).sort().filter(w => w >= AC_ROSTER_START)) {
+        for (const p of Object.values(gw[wk] && gw[wk].registrations || {})) {
+          const name = (p.name || '').trim();
+          if (!name || blocked.has(name.toLowerCase())) continue;
+          const k = name.toLowerCase();
+          if (!seen.has(k)) seen.set(k, { name: name, lower: k, weeks: 0, last: '' });
+          const e = seen.get(k);
+          e.name = name;
+          e.weeks++;
+          if (wk > e.last) e.last = wk;
+        }
+      }
+      known = [...seen.values()];
+    } catch (e) {
+      known = [];   // suggestions are a convenience; the field still works without them
+    }
+  })();
+
+  const registeredNow = () => new Set(players.map(p => norm(p.name || '')));
+
+  function rank(q) {
+    const reg = registeredNow();
+    const out = [];
+    for (const e of known) {
+      const at = e.lower.indexOf(q);
+      if (at === -1) continue;
+      out.push({
+        name: e.name, lower: e.lower, weeks: e.weeks, last: e.last,
+        at: at,
+        score: (at === 0 ? 0 : 1000) + at,   // prefix beats substring
+        taken: reg.has(e.lower)
+      });
+    }
+    out.sort((a, b) =>
+      a.score - b.score ||
+      (b.last > a.last ? 1 : b.last < a.last ? -1 : 0) ||
+      b.weeks - a.weeks ||
+      a.name.localeCompare(b.name));
+    return out.slice(0, 8);
+  }
+
+  function close() {
+    box.classList.remove('open');
+    input.setAttribute('aria-expanded', 'false');
+    active = -1;
+  }
+
+  function choose(e) {
+    input.value = e.name;
+    close();
+    input.closest('.field').classList.remove('err');
+    checkHint();
+  }
+
+  function draw(q) {
+    items = rank(q);
+    box.innerHTML = '';
+    if (!q) { close(); return; }
+    if (!items.length) {
+      const d = document.createElement('div');
+      d.className = 'ign-ac-empty';
+      d.textContent = 'No match - new player, keep typing';
+      box.appendChild(d);
+      box.classList.add('open');
+      input.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    items.forEach((e, idx) => {
+      const row = document.createElement('div');
+      row.className = 'ign-ac-item';
+      row.setAttribute('role', 'option');
+      row.append(document.createTextNode(e.name.slice(0, e.at)));
+      const strong = document.createElement('b');
+      strong.textContent = e.name.slice(e.at, e.at + q.length);
+      row.append(strong);
+      row.append(document.createTextNode(e.name.slice(e.at + q.length)));
+      if (e.taken) {
+        const t = document.createElement('span');
+        t.className = 'done';
+        t.textContent = 'registered';
+        row.append(t);
+      }
+      row.onmousedown = ev => { ev.preventDefault(); choose(e); };
+      row.onmouseenter = () => setActive(idx);
+      box.appendChild(row);
+    });
+    box.classList.add('open');
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  function setActive(i) {
+    active = i;
+    [...box.children].forEach((c, idx) => c.classList.toggle('active', idx === active));
+    if (active >= 0 && box.children[active]) {
+      box.children[active].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // Flag a typed name that sits one or two edits from a known one.
+  function editDistance(a, b) {
+    if (Math.abs(a.length - b.length) > 2) return 9;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  function checkHint() {
+    hint.textContent = '';
+    const q = norm(input.value);
+    if (q.length < 3) return;
+    if (known.some(e => e.lower === q)) return;          // exact match, nothing to say
+    let best = null;
+    for (const e of known) {
+      const d = editDistance(q, e.lower);
+      if (d <= 2 && (!best || d < best.d)) best = { e: e, d: d };
+    }
+    if (!best) return;
+    hint.append(document.createTextNode('Did you mean '));
+    const b = document.createElement('b');
+    b.textContent = best.e.name;
+    b.onclick = () => choose(best.e);
+    hint.append(b, document.createTextNode('?'));
+  }
+
+  input.addEventListener('input', () => { draw(norm(input.value)); checkHint(); });
+  input.addEventListener('focus', () => { if (input.value) draw(norm(input.value)); });
+  input.addEventListener('blur', () => setTimeout(close, 120));
+
+  input.addEventListener('keydown', ev => {
+    const open = box.classList.contains('open') && items.length;
+    if (ev.key === 'ArrowDown' && open) { ev.preventDefault(); setActive((active + 1) % items.length); }
+    else if (ev.key === 'ArrowUp' && open) { ev.preventDefault(); setActive((active - 1 + items.length) % items.length); }
+    else if (ev.key === 'Enter' && open && active >= 0) { ev.preventDefault(); choose(items[active]); }
+    else if (ev.key === 'Escape') { close(); }
   });
 }
 </script>
