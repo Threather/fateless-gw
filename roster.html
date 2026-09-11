@@ -58,7 +58,9 @@ a{color:var(--gold)}
   <h1>Roster Admin</h1>
   <div class="sub">Fateless · guild war registration</div>
 
-  <div class="card" id="gate">
+  <div class="sub" id="checking" style="margin-top:2rem">Checking session…</div>
+
+  <div class="card hidden" id="gate">
     <label for="pw">Admin password</label>
     <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
     <div style="margin-top:.9rem"><button class="primary" id="go">Unlock</button></div>
@@ -262,6 +264,7 @@ let entered = false;
 async function enter(){
   if (entered) return;          // auth state also fires right after a manual unlock
   entered = true;
+  $('checking').classList.add('hidden');
   $('gate').classList.add('hidden');
   $('panel').classList.remove('hidden');
   try {
@@ -273,7 +276,11 @@ async function enter(){
 
 // Firebase keeps the session in this browser, so an admin who unlocked on the
 // registration page lands here already signed in.
-onAuthStateChanged(auth, user => { if (user) enter(); });
+onAuthStateChanged(auth, user => {
+  $('checking').classList.add('hidden');
+  if (user) enter();
+  else $('gate').classList.remove('hidden');   // no session: ask for the password
+});
 
 $('lock').onclick = () => signOut(auth).finally(() => location.reload());
 $('go').onclick = unlock;
