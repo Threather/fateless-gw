@@ -124,6 +124,13 @@ function weekKey(){
   return `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
 }
 
+// Firebase keys reject . # $ [ ] / — percent-encode them so names like
+// "Polpot." can still be stored. The real name lives in the value.
+function safeKey(name){
+  return encodeURIComponent(name.toLowerCase())
+    .replace(/[.#$\[\]]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+
 // Levenshtein distance, capped — only used to flag likely typos.
 function near(a, b){
   if (Math.abs(a.length - b.length) > 2) return false;
@@ -158,7 +165,8 @@ async function load(){
     warn('Cannot read roster_blocklist — check Firebase rules. Hiding will not persist.');
   }
   const gw = gwSnap.val() || {};
-  state.blocked = new Set(Object.keys(blockVal).map(k => k.toLowerCase()));
+  // Match on the stored value (the actual name), so the encoded key never matters.
+  state.blocked = new Set(Object.values(blockVal).map(v => String(v).toLowerCase()));
   state.week = weekKey();
 
   const seen = new Map();   // lowercase -> {name, weeks:Set}
@@ -230,7 +238,7 @@ function render(){
     btn.textContent = isBlocked ? 'Restore' : 'Hide';
     btn.onclick = async () => {
       btn.disabled = true;
-      const node = ref(db, `roster_blocklist/${encodeURIComponent(r.key)}`);
+      const node = ref(db, `roster_blocklist/${safeKey(r.name)}`);
       try {
         if (isBlocked){ await remove(node); state.blocked.delete(r.key); }
         else { await set(node, r.name); state.blocked.add(r.key); }

@@ -90,7 +90,12 @@ def expandable(label, names):
 
 def load_data(now):
     guild_wars = db.reference("/guild_wars").get() or {}
-    blocked = {n.lower() for n in (db.reference("/roster_blocklist").get() or {})}
+    # Keys are percent-encoded (Firebase rejects "." and friends), so the
+    # authoritative name is the stored value.
+    blocked = {
+        str(v).strip().lower()
+        for v in (db.reference("/roster_blocklist").get() or {}).values()
+    }
 
     this_week = week_key(now)
 
