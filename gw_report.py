@@ -30,36 +30,36 @@ PROXIES = {"http": "http://proxy.server:3128", "https": "http://proxy.server:312
 # --- Weekly schedule: weekday -> (title, image, [(time, event)]) ---
 SCHEDULE = {
     0: ("Monday", "guild-party.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         (None, "Hero Realms - WEEKLY RESET, clear your runs"),
     ]),
     1: ("Tuesday", "breaking.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         ("7:30 - 9:30 PM", "Breaking Army"),
         (None, "Hero Realms"),
     ]),
     2: ("Wednesday", "test-skill.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         ("7:30 - 9:30 PM", "Test Your Skill"),
         (None, "Hero Realms"),
     ]),
     3: ("Thursday", "breaking.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         ("7:30 - 9:30 PM", "Breaking Army"),
         (None, "Hero Realms"),
     ]),
     4: ("Friday", "test-skill.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         ("7:30 - 9:30 PM", "Test Your Skill"),
         (None, "Hero Realms"),
     ]),
     5: ("Saturday", "gw-register.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         ("7:30 - 9:00 PM", "GUILD WAR"),
         (None, "Hero Realms"),
     ]),
     6: ("Sunday", "gw-register.png", [
-        ("7:00 - 7:10 PM", "Guild Party"),
+        ("7:20 - 7:30 PM", "Guild Party"),
         ("7:30 - 9:00 PM", "GUILD WAR"),
         (None, "Hero Realms"),
     ]),
