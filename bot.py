@@ -192,7 +192,7 @@ class RegisterForm(discord.ui.View):
         super().__init__(timeout=600)
         self.name = name
         self.answers = {}
-        weapons = [(w, w, weapon_emoji(w)) for w in WEAPONS]
+        weapons = [(w, w, weapon_emoji(w)) for w in sorted(WEAPONS)]
         self.add_select("weapon1", "🗡️  Choose your main weapon", weapons, 0)
         self.add_select("weapon2", "🗡️  Choose your second weapon", weapons, 1)
         self.add_select("team", "🚩  Attack or Defend?",
