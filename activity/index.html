@@ -105,6 +105,11 @@
 
   <section class="grid g4" id="kpis"></section>
 
+  <section class="card" style="margin-top:16px"><h2>Roster <span class="faint" id="rcount"></span></h2>
+      <div class="sub">This week · follows every filter</div>
+      <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
+        <tbody id="roster"></tbody></table></div></section>
+
   <section class="grid g2">
     <div class="card"><h2>Composition by weapon family</h2>
       <div class="sub">Players per family, split Attack / Defend · tick = 8-week average · click a bar to filter</div>
@@ -122,16 +127,12 @@
     <div class="legend"><span><b style="background:var(--gold)"></b>Saturday</span><span><b style="background:var(--gray)"></b>Sunday</span></div>
     <div class="scroll-x" id="trend"></div></section>
 
-  <section class="grid g2b">
+  <section class="grid">
     <div class="card"><h2>Reliability</h2>
       <div class="sub">Last 12 weeks · ■ main ▢ reserve · click a player to filter</div>
       <div class="tablewrap"><table><thead><tr><th class="sort" data-s="name">Player</th><th>12 weeks</th>
         <th class="sort" data-s="rel">Rel.</th><th class="sort hide-m" data-s="streak">Streak</th></tr></thead>
         <tbody id="rel"></tbody></table></div></div>
-    <div class="card"><h2>Roster <span class="faint" id="rcount"></span></h2>
-      <div class="sub">This week · follows every filter</div>
-      <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
-        <tbody id="roster"></tbody></table></div></div>
   </section>
 </div>
 
