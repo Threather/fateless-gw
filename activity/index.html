@@ -117,12 +117,10 @@
       <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Role</th><th>Team</th><th>Day</th></tr></thead>
         <tbody id="roster"></tbody></table></div></section>
 
-  <section class="grid g2">
-    <div class="card"><h2>Composition by weapon family</h2>
-      <div class="sub">Players per family, split Attack / Defend · tick = 8-week average · click a bar to filter</div>
-      <div class="legend"><span><b style="background:var(--gold)"></b>Attack</span><span><b style="background:var(--gray)"></b>Defend</span>
-        <span>│ 8-wk avg</span></div>
-      <div id="comp"></div></div>
+  <section class="grid">
+    <div class="card"><h2>Weapons</h2>
+      <div class="sub">Players using each weapon · click a bar to filter</div>
+      <div class="scroll-x" id="comp"></div></div>
     <div class="card"><h2>Not signed up</h2>
       <div class="sub">Registered since August but not this week · most recent first</div>
       <div class="missing" id="missing"></div>
@@ -188,7 +186,7 @@ const fmtWeek = w => new Date(w + "T00:00:00Z").toLocaleDateString("en-GB", { da
 let weeks = [];          // sorted week keys
 const data = {};         // week -> [players]
 let week = currentWeek();
-const f = { day: null, role: null, team: null, family: null, player: null };  // cross-filter state
+const f = { day: null, role: null, team: null, weapon: null, player: null };  // cross-filter state
 let relSort = "rel";
 
 const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
@@ -216,7 +214,7 @@ const match = {
   day: (p, v) => v === "Saturday" ? sat(p) : sun(p),
   role: (p, v) => roleOf(p) === v,
   team: (p, v) => p.team === v,
-  family: (p, v) => fams(p).includes(v),
+  weapon: (p, v) => p.weapon1 === v || p.weapon2 === v,
   player: (p, v) => key(p.name) === v,
 };
 const filtered = (list, except) => list.filter(p =>
@@ -260,7 +258,7 @@ function render() {
 
   renderChips();
   renderKpis(players, prevPlayers, missing, wi);
-  renderComp(players, wi);
+  renderComp(players);
   renderMissing(missing);
   renderTrend(wi);
   renderRel(people, last12);
@@ -269,7 +267,7 @@ function render() {
 
 function renderChips() {
   const name = { day: v => v, role: v => ROLES.find(r => r[0] === v)[1], team: v => v === "attack" ? "Attack" : "Defend",
-    family: v => v, player: v => (Object.values(data).flat().find(p => key(p.name) === v) || {}).name || v };
+    weapon: v => v, player: v => (Object.values(data).flat().find(p => key(p.name) === v) || {}).name || v };
   const act = Object.entries(f).filter(([, v]) => v !== null);
   $("chips").innerHTML = act.map(([k, v]) => `<button class="chip" data-k="${k}">${esc(name[k](v))} ✕</button>`).join("")
     + (act.length ? `<button class="clear" id="clear">Clear all</button>` : "");
@@ -312,30 +310,35 @@ function renderKpis(players, prev, missing, wi) {
   $("roles").querySelectorAll("[data-r]").forEach(b => b.onclick = () => toggle("role", b.dataset.r));
 }
 
-function renderComp(players, wi) {
-  const list = filtered(players, "family");
-  const prev8 = weeks.slice(Math.max(0, wi - 8), wi);
-  const rows = FAMILIES.map(fam => {
-    const has = p => fams(p).includes(fam);
-    const avg = prev8.length ? prev8.reduce((s, w) => s + filtered(data[w] || [], "family").filter(has).length, 0) / prev8.length : 0;
-    return { fam, atk: list.filter(p => has(p) && p.team === "attack").length,
-             def: list.filter(p => has(p) && p.team === "defend").length, avg };
-  });
-  const max = Math.max(4, ...rows.map(r => Math.max(r.atk + r.def, r.avg)));
-  const W = 520, L = 92, R = 30, rowH = 26, bw = W - L - R;
-  const x = v => L + v / max * bw;
-  $("comp").innerHTML = `<svg viewBox="0 0 ${W} ${rows.length * rowH}" style="width:100%;max-width:640px">${rows.map((r, i) => {
-    const y = i * rowH, dim = f.family && f.family !== r.fam ? "dim" : "";
-    return `<g class="hit ${dim}" data-f="${r.fam}">
-      <rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
-      <text x="0" y="${y + 17}" style="fill:${f.family === r.fam ? "var(--gold)" : "var(--text)"}">${r.fam}</text>
-      <rect x="${L}" y="${y + 6}" width="${bw}" height="14" rx="2" fill="var(--bg)"/>
-      <rect x="${L}" y="${y + 6}" width="${x(r.atk) - L}" height="14" fill="var(--gold)" class="${f.team === "defend" ? "dim" : ""}"/>
-      <rect x="${x(r.atk)}" y="${y + 6}" width="${x(r.atk + r.def) - x(r.atk)}" height="14" fill="var(--gray)" class="${f.team === "attack" ? "dim" : ""}"/>
-      ${r.avg ? `<line x1="${x(r.avg)}" x2="${x(r.avg)}" y1="${y + 3}" y2="${y + 23}" stroke="var(--text)" stroke-width="1.5"/>` : ""}
-      <text x="${x(r.atk + r.def) + 6}" y="${y + 17}">${r.atk + r.def || ""}</text></g>`;
-  }).join("")}</svg>`;
-  $("comp").querySelectorAll("[data-f]").forEach(g => g.onclick = () => toggle("family", g.dataset.f));
+function renderComp(players) {
+  const list = filtered(players, "weapon");
+  const wRole = w => HEALER_W.has(w) ? "healer" : TANK_W.has(w) ? "tank" : "dps";
+  const groups = ROLES.map(([r, label]) => [r, label, Object.keys(FAMILY).filter(w => wRole(w) === r)
+    .map(w => [w, list.filter(p => p.weapon1 === w || p.weapon2 === w).length]).sort((a, b) => b[1] - a[1])]);
+  const cols = groups.flatMap(g => g[2].map(c => [...c, g[0]]));
+  const top = Math.max(4, ...cols.map(c => c[1]));
+  const colW = 40, gapW = 16, L = 24, chartH = 140, labH = 96, H = chartH + labH + 22;
+  const y = v => 10 + (1 - v / top) * (chartH - 10);
+  let x = L, svg = "";
+  for (const v of [0, Math.round(top / 2), top]) svg += `<text x="0" y="${y(v) + 4}">${v}</text>
+    <line x1="${L}" x2="100%" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="${v ? "2 4" : ""}"/>`;
+  for (const [r, label, items] of groups) {
+    const start = x;
+    for (const [w, n] of items) {
+      const cx = x + colW / 2, dim = f.weapon && f.weapon !== w ? "dim" : "";
+      svg += `<g class="hit ${dim}" data-w="${esc(w)}"><rect x="${x}" y="0" width="${colW}" height="${chartH + labH}" fill="transparent"/>
+        <rect x="${x + 7}" y="${y(n)}" width="${colW - 14}" height="${y(0) - y(n)}" rx="2" fill="${ROLE_COLOR[r]}"/>
+        ${n ? `<text x="${cx}" y="${y(n) - 4}" text-anchor="middle" style="fill:var(--text)">${n}</text>` : ""}
+        <text transform="translate(${cx + 4},${chartH + 8}) rotate(-50)" text-anchor="end"
+          style="fill:${f.weapon === w ? "var(--gold)" : "var(--muted)"}">${esc(w)}</text></g>`;
+      x += colW;
+    }
+    svg += `<line x1="${start + 4}" x2="${x - 4}" y1="${H - 18}" y2="${H - 18}" stroke="${ROLE_COLOR[r]}" stroke-width="2"/>
+      <text x="${(start + x) / 2}" y="${H - 3}" text-anchor="middle" style="fill:${ROLE_COLOR[r]};font-weight:600">${label}</text>`;
+    x += gapW;
+  }
+  $("comp").innerHTML = `<svg viewBox="0 0 ${x} ${H}" style="min-width:${x}px;width:100%;height:${H}px">${svg}</svg>`;
+  $("comp").querySelectorAll("[data-w]").forEach(g => g.onclick = () => toggle("weapon", g.dataset.w));
 }
 
 function renderMissing(missing) {
