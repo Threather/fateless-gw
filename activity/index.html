@@ -119,7 +119,7 @@
 
   <section class="grid">
     <div class="card"><h2>Weapons</h2>
-      <div class="sub">Players using each weapon · click a bar to filter</div>
+      <div class="sub">Players by main weapon (Weapon 1) · click a bar to filter</div>
       <div class="scroll-x" id="comp"></div></div>
     <div class="card"><h2>Not signed up</h2>
       <div class="sub">Registered since August but not this week · most recent first</div>
@@ -214,7 +214,7 @@ const match = {
   day: (p, v) => v === "Saturday" ? sat(p) : sun(p),
   role: (p, v) => roleOf(p) === v,
   team: (p, v) => p.team === v,
-  weapon: (p, v) => p.weapon1 === v || p.weapon2 === v,
+  weapon: (p, v) => p.weapon1 === v,
   player: (p, v) => key(p.name) === v,
 };
 const filtered = (list, except) => list.filter(p =>
@@ -314,7 +314,7 @@ function renderComp(players) {
   const list = filtered(players, "weapon");
   const wRole = w => HEALER_W.has(w) ? "healer" : TANK_W.has(w) ? "tank" : "dps";
   const groups = ROLES.map(([r, label]) => [r, label, Object.keys(FAMILY).filter(w => wRole(w) === r)
-    .map(w => [w, list.filter(p => p.weapon1 === w || p.weapon2 === w).length]).sort((a, b) => b[1] - a[1])]);
+    .map(w => [w, list.filter(p => p.weapon1 === w).length]).sort((a, b) => b[1] - a[1])]);
   const cols = groups.flatMap(g => g[2].map(c => [...c, g[0]]));
   const top = Math.max(4, ...cols.map(c => c[1]));
   const colW = 40, gapW = 16, L = 24, chartH = 140, labH = 96, H = chartH + labH + 22;
