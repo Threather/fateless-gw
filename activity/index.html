@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fateless GW Dashboard</title>
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #161a22; --panel2: #1d222c; --line: #2a303c;
+    --text: #e8e6e1; --muted: #8b909c; --gold: #d4a24c; --gold2: #f0c674;
+    --atk: #e0564f; --def: #4f8fe0; --sat: #9b6bea; --sun: #3fbf9b; --res: #e6a23c;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(90deg, #1a140a, var(--bg) 60%); }
+  header h1 { font-size: 18px; letter-spacing: .08em; color: var(--gold2); }
+  header .week { color: var(--muted); font-size: 12px; }
+  header .live { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  header .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fbf6b; box-shadow: 0 0 8px #3fbf6b; }
+  main { display: grid; grid-template-columns: 1fr 320px; gap: 14px; padding: 14px 20px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 12px; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 10px;
+    display: flex; justify-content: space-between; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 600px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { cursor: pointer; transition: .15s; border-left: 3px solid var(--c); }
+  .kpi:hover { background: var(--panel2); }
+  .kpi.on { background: var(--panel2); outline: 1px solid var(--c); }
+  .kpi .v { font-size: 28px; font-weight: 700; }
+  .kpi .v small { font-size: 14px; color: var(--muted); font-weight: 400; }
+  .kpi .meter { height: 4px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .kpi .meter i { display: block; height: 100%; background: var(--c); }
+  .charts { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 600px) { .charts { grid-template-columns: 1fr; } }
+  .bars .row { display: grid; grid-template-columns: 150px 1fr 26px; align-items: center; gap: 8px; padding: 3px 4px;
+    border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .bars .row:hover, .bars .row.on { background: var(--panel2); }
+  .bars .row.dim { opacity: .35; }
+  .bars .track { height: 12px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bars .track i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); }
+  .bars .n { text-align: right; color: var(--muted); }
+  .donut { display: flex; align-items: center; gap: 16px; }
+  .donut svg { width: 130px; height: 130px; flex: none; }
+  .donut path { cursor: pointer; transition: opacity .15s; }
+  .legend div { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
+  .legend div:hover, .legend div.on { background: var(--panel2); }
+  .legend b { width: 10px; height: 10px; border-radius: 2px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 3px 10px;
+    font-size: 12px; cursor: pointer; }
+  .chip.x { border-color: var(--gold); color: var(--gold2); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em;
+    padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 7px 8px; border-bottom: 1px solid #1f242e; }
+  tr.me td { background: #2a2110; }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; }
+  .tag.attack { background: #3a1c1b; color: #ff8a84; } .tag.defend { background: #1b2a3e; color: #8ab8ff; }
+  .tag.res { background: #3a2b12; color: var(--res); }
+  .scroll { max-height: 360px; overflow: auto; }
+  aside .panel { position: sticky; top: 14px; }
+  .who { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .who img { width: 40px; height: 40px; border-radius: 50%; background: var(--line); }
+  .who .n { font-weight: 600; font-size: 15px; }
+  label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
+  select { width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 9px; font-size: 14px; }
+  .seg { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 6px; }
+  .seg button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 9px 4px;
+    cursor: pointer; font-size: 13px; }
+  .seg button.on { border-color: var(--gold); background: #2a2110; color: var(--gold2); }
+  .go { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
+    background: linear-gradient(90deg, var(--gold), var(--gold2)); color: #1a1205; }
+  .go:disabled { opacity: .5; cursor: default; }
+  .msg { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  .msg.err { color: #ff8a84; } .msg.ok { color: #7fe0a4; }
+  .done { text-align: center; padding: 18px 0; }
+  .done .big { font-size: 34px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔ FATELESS · GUILD WAR</h1>
+  <span class="week" id="week"></span>
+  <span class="live"><span class="dot"></span><span id="status">Connecting…</span></span>
+</header>
+
+<main>
+  <section>
+    <div class="kpis" id="kpis"></div>
+    <div class="charts">
+      <div class="panel"><h2>Weapons <span id="wcount"></span></h2><div class="bars" id="bars"></div></div>
+      <div class="panel"><h2>Team split</h2><div class="donut" id="donut"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Roster <span class="filters" id="filters"></span></h2>
+      <div class="scroll"><table>
+        <thead><tr><th>#</th><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <aside><div class="panel" id="form">
+    <h2>Register</h2>
+    <div class="who"><img id="avatar" alt=""><div><div class="n" id="me">Signing in…</div>
+      <div class="week">Name from your server nickname</div></div></div>
+    <div id="fields">
+      <label>Weapon 1</label><select id="w1"></select>
+      <label>Weapon 2</label><select id="w2"></select>
+      <label>Team</label><div class="seg" style="--n:2" data-k="team">
+        <button data-v="attack">⚔ Attack</button><button data-v="defend">🛡 Defend</button></div>
+      <label>Day</label><div class="seg" style="--n:3" data-k="avail">
+        <button data-v="Saturday">Sat</button><button data-v="Sunday">Sun</button><button data-v="Sat & Sun">Both</button></div>
+      <button class="go" id="go" disabled>Confirm Registration</button>
+      <div class="msg" id="msg"></div>
+    </div>
+  </div></aside>
+</main>
+
+<script>
+const CLIENT_ID = "1561639617776590889";
+const DB = "/fb";  // proxied to Firebase by the Activity URL mapping
+const DAY_MAX = 30, RESERVE_MAX = 60;
+const WEAPONS = [
+  "Nameless Sword","Nameless Spear","Stormbreaker Spear","Thundercry Blade",
+  "Infernal Twinblades","Mortal Rope Dart","Vernal Umbrella","Inkwell Fan",
+  "Panacea Fan","Soulshade Umbrella","Heavenquaker Spear","Strategic Sword",
+  "Snowparting Blade","Phalanxbane Blade","Everspring Umbrella","Unfettered Rope Dart",
+  "Heavenwill Gauntlets","Skygrasp Rope Dart"
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function weekKey() {
+  const now = new Date(Date.now() + 7 * 3600e3);  // Cambodia time
+  const day = now.getUTCDay();
+  now.setUTCDate(now.getUTCDate() - (day === 0 ? 6 : day - 1));
+  return now.toISOString().slice(0, 10);
+}
+const WEEK = weekKey();
+const REGS = `${DB}/guild_wars/${WEEK}/registrations`;
+$("week").textContent = "Week of " + WEEK;
+
+/* ---------- Discord connection (Embedded App postMessage protocol) ---------- */
+const params = new URLSearchParams(location.search);
+const pending = {};
+function rpc(cmd, args) {
+  const nonce = crypto.randomUUID();
+  window.parent.postMessage([1, { cmd, nonce, args }], "*");
+  return new Promise((res, rej) => pending[nonce] = { res, rej });
+}
+let readyResolve; const ready = new Promise(r => readyResolve = r);
+window.addEventListener("message", ({ data }) => {
+  if (!Array.isArray(data)) return;
+  const [, msg] = data;
+  if (!msg) return;
+  if (msg.evt === "READY") return readyResolve();
+  const p = pending[msg.nonce];
+  if (!p) return;
+  delete pending[msg.nonce];
+  msg.evt === "ERROR" ? p.rej(msg.data) : p.res(msg.data);
+});
+window.parent.postMessage([0, { v: 1, encoding: "json", client_id: CLIENT_ID,
+  frame_id: params.get("frame_id") }], "*");
+
+/* Who is this? The bot swaps the OAuth code for the member's server nickname. */
+let me = null;
+async function signIn() {
+  await ready;
+  const { code } = await rpc("AUTHORIZE", { client_id: CLIENT_ID, response_type: "code", state: "",
+    prompt: "none", scope: ["identify", "guilds.members.read"] });
+  const id = crypto.randomUUID();
+  await fetch(`${DB}/activity_auth/${id}.json`, { method: "PUT",
+    body: JSON.stringify({ code, guild: params.get("guild_id"), at: Date.now() }) });
+  for (let i = 0; i < 40; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    const r = await (await fetch(`${DB}/activity_auth/${id}.json`)).json();
+    if (r && r.name) return r;
+    if (r && r.error) throw new Error(r.error);
+  }
+  throw new Error("Bot did not answer — is it running?");
+}
+
+/* ---------- Data ---------- */
+let players = [];
+let filter = { avail: null, team: null, weapon: null, reserve: null };
+
+async function load() {
+  try {
+    const val = await (await fetch(`${REGS}.json`)).json();
+    players = Object.values(val || {}).sort((a, b) => a.registeredAt - b.registeredAt);
+    $("status").textContent = "Live · " + players.length + " registered";
+    render();
+  } catch { $("status").textContent = "Offline"; }
+}
+
+const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
+const sun = p => p.avail === "Sunday" || p.avail === "Sat & Sun";
+function visible() {
+  return players.filter(p =>
+    (!filter.avail || (filter.avail === "Saturday" ? sat(p) : sun(p))) &&
+    (!filter.team || p.team === filter.team) &&
+    (!filter.weapon || p.weapon1 === filter.weapon || p.weapon2 === filter.weapon) &&
+    (filter.reserve === null || !!p.isReserve === filter.reserve));
+}
+function toggle(k, v) { filter[k] = filter[k] === v ? null : v; render(); }
+
+function render() {
+  const main = players.filter(p => !p.isReserve);
+  const kpis = [
+    ["Saturday", main.filter(sat).length, DAY_MAX, "--sat", () => toggle("avail", "Saturday"), filter.avail === "Saturday"],
+    ["Sunday", main.filter(sun).length, DAY_MAX, "--sun", () => toggle("avail", "Sunday"), filter.avail === "Sunday"],
+    ["Reserve", players.length - main.length, RESERVE_MAX, "--res", () => toggle("reserve", true), filter.reserve === true],
+    ["Total", players.length, null, "--gold", () => { filter = { avail: null, team: null, weapon: null, reserve: null }; render(); }, false],
+  ];
+  $("kpis").innerHTML = "";
+  for (const [name, n, max, c, onclick, on] of kpis) {
+    const d = document.createElement("div");
+    d.className = "panel kpi" + (on ? " on" : "");
+    d.style.setProperty("--c", `var(${c})`);
+    d.innerHTML = `<h2>${name}</h2><div class="v">${n}${max ? ` <small>/ ${max}</small>` : ""}</div>` +
+      (max ? `<div class="meter"><i style="width:${Math.min(100, n / max * 100)}%"></i></div>` : "");
+    d.onclick = onclick;
+    $("kpis").append(d);
+  }
+
+  const vis = visible();
+  // Weapons bar chart (cross-filters by the other filters)
+  const wc = {};
+  vis.forEach(p => [p.weapon1, p.weapon2].forEach(w => w && (wc[w] = (wc[w] || 0) + 1)));
+  const top = Object.entries(wc).sort((a, b) => b[1] - a[1]);
+  const max = top[0]?.[1] || 1;
+  $("wcount").textContent = top.length ? top.length + " used" : "";
+  $("bars").innerHTML = top.length ? "" : `<div class="week">No registrations yet</div>`;
+  for (const [w, n] of top) {
+    const r = document.createElement("div");
+    r.className = "row" + (filter.weapon === w ? " on" : filter.weapon ? " dim" : "");
+    r.innerHTML = `<span>${esc(w)}</span><span class="track"><i style="width:${n / max * 100}%"></i></span><span class="n">${n}</span>`;
+    r.onclick = () => toggle("weapon", w);
+    $("bars").append(r);
+  }
+
+  // Team donut
+  const atk = vis.filter(p => p.team === "attack").length, def = vis.filter(p => p.team === "defend").length;
+  const total = atk + def || 1, a = atk / total * Math.PI * 2;
+  const arc = (s, e) => {
+    if (e - s >= Math.PI * 2 - 1e-6) e = s + Math.PI * 2 - 1e-4;
+    const p = t => [60 + 50 * Math.sin(t), 60 - 50 * Math.cos(t)];
+    const [x1, y1] = p(s), [x2, y2] = p(e);
+    return `M${x1} ${y1}A50 50 0 ${e - s > Math.PI ? 1 : 0} 1 ${x2} ${y2}`;
+  };
+  const seg = (team, path, color) => (team === "attack" ? atk : def) ?
+    `<path d="${path}" stroke="${color}" stroke-width="18" fill="none" opacity="${filter.team && filter.team !== team ? .25 : 1}" data-t="${team}"/>` : "";
+  $("donut").innerHTML = `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" stroke="var(--line)" stroke-width="18" fill="none"/>
+      ${seg("attack", arc(0, a), "var(--atk)")}${seg("defend", arc(a, Math.PI * 2), "var(--def)")}
+      <text x="60" y="66" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">${atk + def}</text></svg>
+    <div class="legend">
+      <div data-t="attack" class="${filter.team === "attack" ? "on" : ""}"><b style="background:var(--atk)"></b>Attack · ${atk}</div>
+      <div data-t="defend" class="${filter.team === "defend" ? "on" : ""}"><b style="background:var(--def)"></b>Defend · ${def}</div></div>`;
+  $("donut").querySelectorAll("[data-t]").forEach(el => el.onclick = () => toggle("team", el.dataset.t));
+
+  // Active filter chips
+  const labels = { avail: v => v, team: v => v === "attack" ? "Attack" : "Defend", weapon: v => v, reserve: () => "Reserve" };
+  $("filters").innerHTML = "";
+  for (const k in filter) if (filter[k] !== null) {
+    const c = document.createElement("button");
+    c.className = "chip x"; c.textContent = labels[k](filter[k]) + " ✕";
+    c.onclick = () => toggle(k, filter[k]);
+    $("filters").append(c);
+  }
+
+  // Roster table
+  $("rows").innerHTML = vis.map((p, i) => `<tr class="${me && p.name.toLowerCase() === me.name.toLowerCase() ? "me" : ""}">
+    <td>${i + 1}</td><td>${esc(p.name)} ${p.isReserve ? '<span class="tag res">reserve</span>' : ""}</td>
+    <td>${esc(p.weapon1)} / ${esc(p.weapon2)}</td>
+    <td>${p.team ? `<span class="tag ${p.team}">${p.team === "attack" ? "Attack" : "Defend"}</span>` : "—"}</td>
+    <td>${esc(p.avail)}</td></tr>`).join("") || `<tr><td colspan="5" class="week">Nobody matches these filters</td></tr>`;
+
+  renderForm();
+}
+
+/* ---------- Register form ---------- */
+const choice = { team: null, avail: null };
+for (const id of ["w1", "w2"]) {
+  $(id).innerHTML = `<option value="">— Select —</option>` + WEAPONS.map(w => `<option>${w}</option>`).join("");
+  $(id).onchange = renderForm;
+}
+document.querySelectorAll(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.onclick = () => {
+  choice[seg.dataset.k] = b.dataset.v;
+  seg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  renderForm();
+}));
+
+function renderForm() {
+  if (!me) return;
+  const mine = players.find(p => p.name.toLowerCase() === me.name.toLowerCase());
+  if (mine) {
+    $("fields").innerHTML = `<div class="done"><div class="big">✅</div><b>You're registered</b>
+      <div class="week">${esc(mine.weapon1)} / ${esc(mine.weapon2)}<br>${mine.team === "attack" ? "⚔ Attack" : "🛡 Defend"} · ${esc(mine.avail)}
+      ${mine.isReserve ? "<br>Reserve slot" : ""}</div></div>`;
+    return;
+  }
+  $("go").disabled = !($("w1").value && $("w2").value && choice.team && choice.avail);
+}
+
+function say(text, ok) { $("msg").textContent = text; $("msg").className = "msg " + (ok ? "ok" : "err"); }
+
+$("go").onclick = async () => {
+  const w1 = $("w1").value, w2 = $("w2").value, { team, avail } = choice;
+  if (w1 === w2) return say("Weapon 1 and 2 must be different.");
+  await load();
+  if (players.some(p => p.name.toLowerCase() === me.name.toLowerCase())) return say(`"${me.name}" is already registered.`);
+  const main = players.filter(p => !p.isReserve);
+  const s = main.filter(sat).length, u = main.filter(sun).length;
+  const isReserve = (avail === "Saturday" && s >= DAY_MAX) || (avail === "Sunday" && u >= DAY_MAX) ||
+    (avail === "Sat & Sun" && s >= DAY_MAX && u >= DAY_MAX);
+  if (isReserve && players.length - main.length >= RESERVE_MAX) return say("All slots including reserve are full!");
+  $("go").disabled = true; $("go").textContent = "Registering…";
+  try {
+    const r = await fetch(`${REGS}.json`, { method: "POST", body: JSON.stringify({
+      name: me.name, weapon1: w1, weapon2: w2, role: null, team, avail,
+      jungle: false, jungleSide: null, isReserve, registeredAt: Date.now() }) });
+    if (!r.ok) throw 0;
+    await load();
+  } catch {
+    say("Failed to register — try again.");
+    $("go").textContent = "Confirm Registration"; renderForm();
+  }
+};
+
+/* ---------- Start ---------- */
+load();
+setInterval(load, 5000);
+signIn().then(user => {
+  me = user;
+  $("me").textContent = me.name;
+  if (me.avatar) $("avatar").src = me.avatar;
+  render();
+}).catch(e => { $("me").textContent = "Sign-in failed"; say(e.message || "Could not sign in"); });
+</script>
+</body>
+</html>

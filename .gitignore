@@ -1,3 +1,5 @@
 sound/
 get_id.py
 *adminsdk*.json
+firebase-key.json
+.env
