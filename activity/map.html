@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fateless — War Map</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#07080b;--ash:#12141a;--line:#23262f;
+  --bone:#e9e5dc;--dim:#8e8b84;--brass:#b8934a;--cut:#c0453c;
+  --bg:var(--void);--bg-card:#0d0f14;--bg-input:#12141a;--bg-hover:#191c23;
+  --border:rgba(233,229,220,.07);--border-hi:#23262f;
+  --gold:var(--brass);--gold-dim:rgba(184,147,74,.13);--gold-glow:rgba(184,147,74,.32);
+  --text1:var(--bone);--text2:var(--dim);--text3:#55534c;
+  --heal:#6b9b78;--tank:#b07c45;--dps:#6285a8;--def:#6f7f96;--atk:#b8934a;
+  --display:"Bodoni Moda",Georgia,serif;--body:"Inter",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+  --r:0px;--r-sm:0px;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text1);font-family:var(--body);font-weight:300;font-size:14px;display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 50% 0%,transparent 55%,rgba(0,0,0,.5) 100%);}
+
+/* TOP BAR */
+.topbar{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0;gap:1rem;flex-wrap:wrap;}
+.topbar-left{display:flex;align-items:center;gap:1rem}
+.logo{font-family:var(--display);font-size:1.5rem;letter-spacing:-.01em;color:var(--text1)}
+.logo span{color:var(--gold)}
+.back-btn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);background:none;border:1px solid var(--border-hi);border-radius:var(--r-sm);padding:5px 12px;cursor:pointer;text-decoration:none;transition:all .18s;display:inline-flex;align-items:center;gap:5px;}
+.back-btn:hover{color:var(--text1);background:var(--bg-hover)}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tool-btn{background:var(--bg-input);border:1px solid var(--border-hi);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer;color:var(--text2);font-size:12px;font-family:var(--body);transition:all .18s;display:flex;align-items:center;gap:5px;white-space:nowrap;border:none;}
+.tool-btn:hover{background:var(--bg-hover);color:var(--text1)}
+.tool-btn.active{background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold)}
+.tool-btn.danger:hover{background:rgba(192,69,60,.15);color:var(--cut)}
+.divider{width:1px;height:24px;background:var(--border-hi);flex-shrink:0}
+.zoom-info{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:40px;text-align:center}
+
+/* MAIN */
+.main{position:relative;z-index:1;display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:210px;flex-shrink:0;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;z-index:5;}
+.sidebar-section{padding:.875rem 1rem;border-bottom:1px solid var(--border)}
+.sidebar-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem;display:flex;align-items:center;gap:6px}
+.sidebar-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border-hi),transparent)}
+.obj-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.obj-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg-input);cursor:grab;transition:all .18s;user-select:none;}
+.obj-item:hover{border-color:var(--gold);background:var(--gold-dim);transform:translateY(-1px)}
+.obj-item:active{cursor:grabbing}
+.obj-item img{width:26px;height:26px;object-fit:contain;pointer-events:none}
+.obj-item span{font-size:8px;color:var(--text3);text-align:center;line-height:1.2}
+.obj-item:hover span{color:var(--gold)}
+.draw-tools{display:flex;flex-direction:column;gap:6px}
+.color-row{display:flex;gap:5px;flex-wrap:wrap}
+.color-swatch{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.color-swatch.active{border-color:#fff;transform:scale(1.25)}
+.size-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.size-row label{font-size:10px;color:var(--text3)}
+.size-row input{flex:1;accent-color:var(--gold)}
+.player-list{display:flex;flex-direction:column;gap:4px}
+.player-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg-input);cursor:grab;font-size:11px;color:var(--text1);transition:all .15s;user-select:none;}
+.player-chip:hover{border-color:var(--border-hi);background:var(--bg-hover)}
+.player-chip.placed{opacity:.4;cursor:default}
+.role-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.role-dot.heal{background:var(--heal)}.role-dot.tank{background:var(--tank)}.role-dot.dps{background:var(--dps)}
+.day-tabs{display:flex;gap:6px;margin-bottom:.75rem}
+.day-tab{flex:1;padding:6px;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.16em;text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-hi);border-radius:var(--r-sm);color:var(--text3);cursor:pointer;transition:all .18s}
+.day-tab.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.day-panel{display:flex;flex-direction:column;gap:8px}
+.team-group{}
+.team-group-label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;padding:4px 0 5px;display:flex;align-items:center;gap:5px}
+.team-group-label.defend{color:var(--def)}
+.team-group-label.attack{color:var(--atk)}
+.team-group-label::after{content:'';flex:1;height:1px;background:currentColor;opacity:.2}
+.player-list{display:flex;flex-direction:column;gap:3px}
+.pname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.side-tag{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:0;font-weight:600;white-space:nowrap}
+.side-tag.top{background:rgba(98,133,168,.2);color:var(--dps)}
+.side-tag.bot{background:rgba(176,124,69,.2);color:var(--tank)}
+.no-players{font-size:11px;color:var(--text3);text-align:center;padding:.75rem 0}
+
+/* MAP VIEWPORT */
+.map-viewport{flex:1;position:relative;overflow:hidden;background:var(--void);cursor:grab;}
+.map-viewport.grabbing{cursor:grabbing}
+.map-viewport.drawing{cursor:crosshair}
+
+/* TILT STAGE — wrapper (kept for layout) */
+#tilt-stage{position:absolute;inset:0;}
+/* 3D PRESENTATION SCENE */
+#scene3d{position:absolute;inset:0;z-index:15;display:none;cursor:grab}
+#scene3d:active{cursor:grabbing}
+.map-viewport.mode3d #tilt-stage{display:none}
+
+/* MAP WORLD — this is what gets scaled/translated */
+#map-world{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+#map-canvas{display:block;}
+#markers-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+
+/* MARKERS */
+.marker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:all;cursor:move;user-select:none;z-index:20;}
+@keyframes dropIn{0%{transform:translate(-50%,-120%) scale(.4);opacity:0}60%{transform:translate(-50%,-46%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+.marker,.pmarker{animation:dropIn .5s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes bossPulse{0%,100%{filter:drop-shadow(0 0 4px rgba(184,147,74,.5))}50%{filter:drop-shadow(0 0 14px rgba(184,147,74,.95))}}
+.marker.boss img{animation:bossPulse 2.2s ease-in-out infinite}
+.pmarker-inner{position:relative}
+.pmarker-inner::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid currentColor;opacity:0;animation:ringPulse 2.6s ease-out infinite}
+@keyframes ringPulse{0%{transform:scale(.8);opacity:.7}70%{transform:scale(1.5);opacity:0}100%{opacity:0}}
+.pmarker-inner.heal::after{color:var(--heal)}.pmarker-inner.tank::after{color:var(--tank)}.pmarker-inner.dps::after{color:var(--dps)}
+@media(prefers-reduced-motion:reduce){.marker,.pmarker{animation:none}.marker.boss img,.pmarker-inner::after{animation:none}}
+.marker:hover img{filter:drop-shadow(0 0 6px var(--gold))}
+.marker img{width:36px;height:36px;object-fit:contain;pointer-events:none;display:block;}
+.marker .mlabel{font-size:9px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);padding:1px 5px;border-radius:0;white-space:nowrap;pointer-events:none;}
+.del-btn{position:absolute;top:-8px;right:-8px;width:16px;height:16px;border-radius:50%;background:var(--cut);border:none;color:#fff;font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:30;line-height:1;}
+.marker:hover .del-btn{display:flex}
+
+/* PLAYER MARKERS */
+.pmarker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:all;cursor:move;user-select:none;z-index:21;}
+.pmarker-inner{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.3);transition:box-shadow .15s;pointer-events:none;}
+.pmarker-inner.heal{background:var(--heal)}.pmarker-inner.tank{background:var(--tank)}.pmarker-inner.dps{background:var(--dps)}
+.pmarker:hover .pmarker-inner{box-shadow:0 0 0 3px var(--gold)}
+.pmarker .pmlabel{font-size:8px;font-weight:600;color:#fff;background:rgba(0,0,0,.75);padding:1px 5px;border-radius:0;white-space:nowrap;pointer-events:none;max-width:72px;overflow:hidden;text-overflow:ellipsis;}
+.pmarker .del-btn{top:-6px;right:-6px;width:14px;height:14px;font-size:9px;}
+.pmarker:hover .del-btn{display:flex}
+
+/* STATUS */
+.statusbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(13,15,20,.85);backdrop-filter:blur(8px);border:1px solid var(--border-hi);border-radius:0;padding:5px 14px;font-size:11px;color:var(--text2);z-index:30;pointer-events:none;letter-spacing:.14em;text-transform:uppercase;font-family:var(--mono);white-space:nowrap;}
+.help-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center;padding:1rem}
+.help-card{background:var(--bg-card);border:1px solid var(--border-hi);border-radius:0;width:100%;max-width:520px;overflow:hidden;max-height:90vh;overflow-y:auto}
+.help-header{background:var(--ash);padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.help-header h2{font-family:var(--display);font-size:1.4rem;letter-spacing:.06em;color:var(--bone)}
+.help-header h2 span{color:var(--brass)}
+.help-close{background:none;border:1px solid var(--border-hi);border-radius:0;color:var(--dim);font-size:13px;padding:4px 10px;cursor:pointer}
+.help-body{padding:1.25rem 1.5rem}
+.help-section{margin-bottom:1.25rem}
+.help-section:last-child{margin-bottom:0}
+.help-section-title{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin-bottom:.625rem;display:flex;align-items:center;gap:6px}
+.help-section-title::after{content:'';flex:1;height:1px;background:var(--line)}
+.help-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:.5rem}
+.help-row:last-child{margin-bottom:0}
+.help-key{font-family:var(--mono);background:var(--bg-hover);border:1px solid var(--border-hi);border-radius:0;padding:2px 8px;font-size:11px;color:var(--brass);white-space:nowrap;font-weight:600;flex-shrink:0}
+.help-desc{font-size:12px;color:var(--dim);line-height:1.5}
+
+/* TOAST */
+.toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%) translateY(-120%);background:var(--bg-card);border:1px solid var(--border-hi);border-radius:var(--r);padding:.6rem 1.1rem;font-size:12px;font-weight:500;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--heal);color:var(--heal)}
+.toast.err{border-color:var(--cut);color:var(--cut)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Fateless <span>War Map</span></div>
+  </div>
+  <div class="topbar-right">
+    <button class="tool-btn active" id="btn-select" onclick="setMode('select')">↖ Select</button>
+    <button class="tool-btn" id="btn-pan" onclick="setMode('pan')">✋ Pan</button>
+    <button class="tool-btn" id="btn-draw" onclick="setMode('draw')">✏️ Draw</button>
+    <button class="tool-btn" id="btn-arrow" onclick="setMode('arrow')">➡️ Arrow</button>
+    <div class="divider"></div>
+    <button class="tool-btn" id="btn-3d" onclick="toggle3D()">🎬 3D View</button>
+    <div class="divider"></div>
+    <button class="tool-btn" onclick="zoomIn()">＋</button>
+    <span class="zoom-info" id="zoom-info">100%</span>
+    <button class="tool-btn" onclick="zoomOut()">－</button>
+    <button class="tool-btn" onclick="resetZoom()">⌂</button>
+    <div class="divider"></div>
+    <button class="tool-btn" onclick="undoLast()">↶ Undo</button>
+    <button class="tool-btn danger" onclick="clearAll()">🧹 Clear</button>
+    <div class="divider"></div>
+    <button class="tool-btn" onclick="exportMap()">📥 Export</button>
+    <button class="tool-btn" onclick="importMap()">📤 Import</button>
+    <div class="divider"></div>
+    <button class="tool-btn" onclick="openHelp()" style="color:#5aaaf5;border-color:rgba(90,170,245,.3)">❓ Help</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Objectives</div>
+      <div class="obj-grid" id="obj-grid">
+        <div class="obj-item" draggable="true" data-src="objective/boss.png" data-label="Boss" ondragstart="objDragStart(event)">
+          <img src="objective/boss.png"><span>Boss</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/tower_blue.png" data-label="Tower A" ondragstart="objDragStart(event)">
+          <img src="objective/tower_blue.png"><span>Tower A</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/tower_red.png" data-label="Tower E" ondragstart="objDragStart(event)">
+          <img src="objective/tower_red.png"><span>Tower E</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/tree_blue.png" data-label="Tree A" ondragstart="objDragStart(event)">
+          <img src="objective/tree_blue.png"><span>Tree A</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/tree_red.png" data-label="Tree E" ondragstart="objDragStart(event)">
+          <img src="objective/tree_red.png"><span>Tree E</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/goose_blue.png" data-label="Goose A" ondragstart="objDragStart(event)">
+          <img src="objective/goose_blue.png"><span>Goose A</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/goose_red.png" data-label="Goose E" ondragstart="objDragStart(event)">
+          <img src="objective/goose_red.png"><span>Goose E</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/red_outpost.png" data-label="Outpost E" ondragstart="objDragStart(event)">
+          <img src="objective/red_outpost.png"><span>Outpost E</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/blue_outpost.png" data-label="Outpost A" ondragstart="objDragStart(event)">
+          <img src="objective/blue_outpost.png"><span>Outpost A</span>
+        </div>
+        <div class="obj-item" draggable="true" data-src="objective/jungle.png" data-label="Jungle" ondragstart="objDragStart(event)">
+          <img src="objective/jungle.png"><span>Jungle</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Draw</div>
+      <div class="draw-tools">
+        <div class="color-row" id="color-row">
+          <div class="color-swatch active" style="background:var(--brass)" data-color="var(--brass)" onclick="setColor(this)"></div>
+          <div class="color-swatch" style="background:var(--cut)" data-color="var(--cut)" onclick="setColor(this)"></div>
+          <div class="color-swatch" style="background:#3a7fd4" data-color="#3a7fd4" onclick="setColor(this)"></div>
+          <div class="color-swatch" style="background:#27a06a" data-color="#27a06a" onclick="setColor(this)"></div>
+          <div class="color-swatch" style="background:#ffffff" data-color="#ffffff" onclick="setColor(this)"></div>
+          <div class="color-swatch" style="background:#f5c542" data-color="#f5c542" onclick="setColor(this)"></div>
+        </div>
+        <div class="size-row">
+          <label>Size</label>
+          <input type="range" id="brush-size" min="2" max="20" value="4" oninput="brushSize=+this.value">
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="flex:1;overflow-y:auto;padding:.75rem .875rem">
+      <div class="sidebar-label">Players</div>
+
+      <!-- DAY TABS -->
+      <div class="day-tabs">
+        <button class="day-tab active" id="tab-sat" onclick="switchDay('sat')">Sat</button>
+        <button class="day-tab" id="tab-sun" onclick="switchDay('sun')">Sun</button>
+      </div>
+
+      <div id="players-sat" class="day-panel"></div>
+      <div id="players-sun" class="day-panel" style="display:none"></div>
+    </div>
+
+  </div>
+
+  <!-- MAP VIEWPORT -->
+  <div class="map-viewport" id="map-viewport"
+    ondragover="event.preventDefault()"
+    ondrop="onDrop(event)">
+
+    <!-- WORLD: canvas + markers together, both get zoomed/panned -->
+    <div id="tilt-stage">
+      <div id="map-world">
+        <canvas id="map-canvas"></canvas>
+        <div id="markers-layer"></div>
+      </div>
+    </div>
+
+    <!-- 3D PRESENTATION SCENE -->
+    <canvas id="scene3d"></canvas>
+
+    <div class="statusbar" id="statusbar">↖ Select — drag objectives or players · Scroll to zoom · Pan with ✋</div>
+  </div>
+</div>
+
+<div class="help-modal" id="help-modal" onclick="if(event.target===this)closeHelp()">
+  <div class="help-card">
+    <div class="help-header">
+      <h2>Map <span>Guide</span></h2>
+      <button class="help-close" onclick="closeHelp()">✕ Close</button>
+    </div>
+    <div class="help-body">
+
+      <div class="help-section">
+        <div class="help-section-title">Modes</div>
+        <div class="help-row"><span class="help-key">↖ Select</span><span class="help-desc">Move and resize placed markers. This is the default mode.</span></div>
+        <div class="help-row"><span class="help-key">✋ Pan</span><span class="help-desc">Click and drag to move around the map.</span></div>
+        <div class="help-row"><span class="help-key">✏ Draw</span><span class="help-desc">Draw freehand lines on the map.</span></div>
+        <div class="help-row"><span class="help-key">➡ Arrow</span><span class="help-desc">Draw directional arrows to show movement paths.</span></div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Placing Objectives & Players</div>
+        <div class="help-row"><span class="help-key">Drag</span><span class="help-desc">Drag any objective icon or player chip from the sidebar onto the map to place it.</span></div>
+        <div class="help-row"><span class="help-key">Move</span><span class="help-desc">In Select mode, click and drag any placed marker to reposition it.</span></div>
+        <div class="help-row"><span class="help-key">Resize</span><span class="help-desc">In Select mode, hover over a marker and scroll up/down to make it bigger or smaller.</span></div>
+        <div class="help-row"><span class="help-key">✕</span><span class="help-desc">Hover over a marker and click the red ✕ button to remove it.</span></div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Zoom & Navigation</div>
+        <div class="help-row"><span class="help-key">Scroll</span><span class="help-desc">Scroll wheel to zoom in and out on the map.</span></div>
+        <div class="help-row"><span class="help-key">Pinch</span><span class="help-desc">On mobile, pinch with two fingers to zoom.</span></div>
+        <div class="help-row"><span class="help-key">+ / −</span><span class="help-desc">Use the + and − buttons in the toolbar to zoom step by step.</span></div>
+        <div class="help-row"><span class="help-key">⌂ Reset</span><span class="help-desc">Click ⌂ to fit the full map back into view.</span></div>
+        <div class="help-row"><span class="help-key">Middle click</span><span class="help-desc">Hold middle mouse button and drag to pan anytime, regardless of mode.</span></div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Drawing</div>
+        <div class="help-row"><span class="help-key">Colors</span><span class="help-desc">Pick a color from the sidebar before drawing.</span></div>
+        <div class="help-row"><span class="help-key">Size</span><span class="help-desc">Adjust the brush size slider in the sidebar.</span></div>
+        <div class="help-row"><span class="help-key">↶ Undo</span><span class="help-desc">Remove the last drawn stroke.</span></div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Players</div>
+        <div class="help-row"><span class="help-key">Sat / Sun tabs</span><span class="help-desc">Switch between Saturday and Sunday player lists. Players available both days appear in both tabs.</span></div>
+        <div class="help-row"><span class="help-key">🛡 / ⚔</span><span class="help-desc">Players are grouped by Defend and Attack teams inside each day tab.</span></div>
+        <div class="help-row"><span class="help-key">Top / Bot</span><span class="help-desc">Jungle players show their assigned lane (Top or Bottom).</span></div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Save & Load</div>
+        <div class="help-row"><span class="help-key">📥 Export</span><span class="help-desc">Save your current drawings as a JSON file to your device.</span></div>
+        <div class="help-row"><span class="help-key">📤 Import</span><span class="help-desc">Load a previously saved strategy file back onto the map.</span></div>
+        <div class="help-row"><span class="help-key">🧹 Clear</span><span class="help-desc">Remove all drawings and placed markers from the map.</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// Inside the Discord Activity, Firebase is reached through the /fb URL mapping (no SDK).
+const DB = "/fb";
+
+// ── WEEK KEY ──
+function getWeekKey() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  const yyyy = monday.getFullYear();
+  const mm   = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd   = String(monday.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// ── STATE ──
+let mode = 'select';
+let drawColor = 'var(--brass)';
+let brushSize = 4;
+let drawHistory = [];
+let currentPath = [];
+let isDrawing = false;
+let dragSrc = null;
+
+// ── ZOOM / PAN STATE ──
+let zoom = 1;
+let panX = 0;
+let panY = 0;
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let panOrigin = { x: 0, y: 0 };
+
+const viewport  = document.getElementById('map-viewport');
+const world     = document.getElementById('map-world');
+const canvas    = document.getElementById('map-canvas');
+const ctx       = canvas.getContext('2d');
+const markersLayer = document.getElementById('markers-layer');
+
+// ── MAP IMAGE ──
+const mapImg = new Image();
+mapImg.crossOrigin = 'anonymous';
+mapImg.src = 'map.webp';
+mapImg.onload = () => {
+  canvas.width  = mapImg.naturalWidth;
+  canvas.height = mapImg.naturalHeight;
+  markersLayer.style.width  = canvas.width  + 'px';
+  markersLayer.style.height = canvas.height + 'px';
+  world.style.width  = canvas.width  + 'px';
+  world.style.height = canvas.height + 'px';
+  // fit map to viewport on load
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  const fitZoom = Math.min(vw / canvas.width, vh / canvas.height) * 0.95;
+  const endZoom = fitZoom, endX = (vw - canvas.width * fitZoom) / 2, endY = (vh - canvas.height * fitZoom) / 2;
+  redrawCanvas();
+  // cinematic glide-in: start slightly zoomed out and above, ease into place
+  const startZoom = fitZoom * 0.82, t0 = performance.now(), DUR = 850;
+  const ease = k => 1 - Math.pow(1 - k, 3);
+  (function glide(t) {
+    const k = ease(Math.min((t - t0) / DUR, 1));
+    zoom = startZoom + (endZoom - startZoom) * k;
+    panX = (vw - canvas.width  * zoom) / 2;
+    panY = (vh - canvas.height * zoom) / 2 - 40 * (1 - k);
+    world.style.opacity = k;
+    applyTransform();
+    if (k < 1) requestAnimationFrame(glide);
+    else { zoom = endZoom; panX = endX; panY = endY; world.style.opacity = 1; applyTransform(); }
+  })(t0);
+};
+mapImg.onerror = () => showToast('map image not found — check your repo', false);
+
+function applyTransform() {
+  world.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  document.getElementById('zoom-info').textContent = Math.round(zoom * 100) + '%';
+}
+
+function redrawCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (mapImg.complete && mapImg.naturalWidth) {
+    ctx.drawImage(mapImg, 0, 0);
+  }
+  drawHistory.forEach(p => drawPath(p));
+}
+
+function drawPath(path) {
+  if (!path || path.points.length < 2) return;
+  ctx.beginPath();
+  ctx.strokeStyle = path.color;
+  ctx.lineWidth   = path.size;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.moveTo(path.points[0].x, path.points[0].y);
+  path.points.forEach(pt => ctx.lineTo(pt.x, pt.y));
+  if (!path.arrow) ctx.stroke();
+  if (path.arrow) {
+    // flowing dash so movement orders visibly "march" along the arrow
+    ctx.save();
+    ctx.setLineDash([path.size * 3, path.size * 2.2]);
+    ctx.lineDashOffset = dashOffset;
+    ctx.shadowColor = path.color;
+    ctx.shadowBlur  = 6;
+    ctx.stroke();
+    ctx.restore();
+    const pts   = path.points;
+    const last  = pts[pts.length - 1];
+    const prev  = pts[pts.length - 2] || pts[0];
+    const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
+    const len   = 18 / zoom;
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(last.x - len * Math.cos(angle - 0.4), last.y - len * Math.sin(angle - 0.4));
+    ctx.lineTo(last.x - len * Math.cos(angle + 0.4), last.y - len * Math.sin(angle + 0.4));
+    ctx.closePath();
+    ctx.fillStyle = path.color;
+    ctx.fill();
+  }
+}
+
+// Convert viewport coords → canvas (world) coords
+function toWorld(cx, cy) {
+  return {
+    x: (cx - panX) / zoom,
+    y: (cy - panY) / zoom
+  };
+}
+
+// ── ZOOM ──
+window.zoomIn    = () => { doZoom(1.2, viewport.clientWidth/2, viewport.clientHeight/2); };
+window.zoomOut   = () => { doZoom(0.8, viewport.clientWidth/2, viewport.clientHeight/2); };
+window.resetZoom = () => {
+  const vw = viewport.clientWidth, vh = viewport.clientHeight;
+  zoom = Math.min(vw / canvas.width, vh / canvas.height) * 0.95;
+  panX = (vw - canvas.width  * zoom) / 2;
+  panY = (vh - canvas.height * zoom) / 2;
+  applyTransform();
+};
+
+function doZoom(factor, cx, cy) {
+  const newZoom = Math.min(Math.max(zoom * factor, 0.15), 6);
+  panX = cx - (cx - panX) * (newZoom / zoom);
+  panY = cy - (cy - panY) * (newZoom / zoom);
+  zoom = newZoom;
+  applyTransform();
+}
+
+// Mouse wheel zoom
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = viewport.getBoundingClientRect();
+  doZoom(e.deltaY < 0 ? 1.12 : 0.9, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive: false });
+
+// Pinch zoom (touch)
+let lastPinchDist = null;
+viewport.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: true });
+viewport.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    if (lastPinchDist) {
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const rect = viewport.getBoundingClientRect();
+      doZoom(dist / lastPinchDist, midX - rect.left, midY - rect.top);
+    }
+    lastPinchDist = dist;
+  }
+}, { passive: false });
+viewport.addEventListener('touchend', () => { lastPinchDist = null; });
+
+// ── PAN (mouse) ──
+viewport.addEventListener('mousedown', e => {
+  if (mode === 'pan' || e.button === 1) {
+    isPanning = true;
+    panStart  = { x: e.clientX, y: e.clientY };
+    panOrigin = { x: panX, y: panY };
+    viewport.classList.add('grabbing');
+    e.preventDefault();
+  }
+});
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  panX = panOrigin.x + (e.clientX - panStart.x);
+  panY = panOrigin.y + (e.clientY - panStart.y);
+  applyTransform();
+});
+window.addEventListener('mouseup', () => {
+  if (isPanning) { isPanning = false; viewport.classList.remove('grabbing'); }
+});
+
+// PAN (touch single finger in pan mode)
+viewport.addEventListener('touchstart', e => {
+  if (mode === 'pan' && e.touches.length === 1) {
+    isPanning = true;
+    panStart  = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    panOrigin = { x: panX, y: panY };
+  }
+}, { passive: true });
+viewport.addEventListener('touchmove', e => {
+  if (isPanning && e.touches.length === 1) {
+    panX = panOrigin.x + (e.touches[0].clientX - panStart.x);
+    panY = panOrigin.y + (e.touches[0].clientY - panStart.y);
+    applyTransform();
+  }
+}, { passive: true });
+viewport.addEventListener('touchend', () => { isPanning = false; });
+
+// ── DRAW ──
+function getCanvasPoint(e) {
+  const rect = viewport.getBoundingClientRect();
+  const cx = (e.clientX ?? e.touches[0].clientX) - rect.left;
+  const cy = (e.clientY ?? e.touches[0].clientY) - rect.top;
+  return toWorld(cx, cy);
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (mode !== 'draw' && mode !== 'arrow') return;
+  isDrawing = true;
+  currentPath = [getCanvasPoint(e)];
+});
+canvas.addEventListener('mousemove', e => {
+  if (!isDrawing) return;
+  currentPath.push(getCanvasPoint(e));
+  redrawCanvas();
+  drawPath({ points: currentPath, color: drawColor, size: brushSize / zoom, arrow: mode === 'arrow' });
+});
+canvas.addEventListener('mouseup', () => {
+  if (!isDrawing) return;
+  isDrawing = false;
+  if (currentPath.length > 1) drawHistory.push({ points:[...currentPath], color:drawColor, size:brushSize/zoom, arrow:mode==='arrow' });
+  currentPath = [];
+  redrawCanvas();
+});
+canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+// ── DRAG FROM SIDEBAR ──
+window.objDragStart = function(e) {
+  dragSrc = { type:'obj', src: e.currentTarget.dataset.src, label: e.currentTarget.dataset.label };
+  e.dataTransfer.effectAllowed = 'copy';
+};
+
+// ── DROP ON VIEWPORT ──
+window.onDrop = function(e) {
+  e.preventDefault();
+  if (!dragSrc) return;
+  const rect = viewport.getBoundingClientRect();
+  const wx   = (e.clientX - rect.left - panX) / zoom;
+  const wy   = (e.clientY - rect.top  - panY) / zoom;
+  if (dragSrc.type === 'obj')    placeObj(dragSrc.src, dragSrc.label, wx, wy);
+  if (dragSrc.type === 'player') placePly(dragSrc.player, wx, wy);
+  dragSrc = null;
+};
+
+// ── PLACE OBJECTIVE ──
+function placeObj(src, label, wx, wy) {
+  const el = document.createElement('div');
+  el.className = 'marker' + (label === 'Boss' ? ' boss' : '');
+  el.style.left = wx + 'px';
+  el.style.top  = wy + 'px';
+  el.innerHTML = `<img src="${src}"><span class="mlabel">${label}</span><button class="del-btn" onclick="this.parentElement.remove()">✕</button>`;
+  makeDraggable(el);
+  markersLayer.appendChild(el);
+}
+
+// ── PLACE PLAYER ──
+function placePly(p, wx, wy) {
+  // remove old marker if re-placing
+  const old = markersLayer.querySelector(`.pmarker[data-name="${p.name}"]`);
+  if (old) old.remove();
+
+  const el = document.createElement('div');
+  el.className = 'pmarker';
+  el.dataset.name = p.name;
+  el.style.left   = wx + 'px';
+  el.style.top    = wy + 'px';
+  const initials  = p.name.slice(0,2).toUpperCase();
+  el.innerHTML = `<div class="pmarker-inner ${p.role}">${initials}</div><span class="pmlabel">${p.name}</span><button class="del-btn" onclick="removePly(this)">✕</button>`;
+  makeDraggable(el);
+  markersLayer.appendChild(el);
+
+  const chips = document.querySelectorAll(`.player-chip[data-name="${p.name}"]`);
+  chips.forEach(c => c.classList.add('placed'));
+}
+
+window.removePly = function(btn) {
+  const el   = btn.parentElement;
+  const name = el.dataset.name;
+  el.remove();
+  const chips = document.querySelectorAll(`.player-chip[data-name="${name}"]`);
+  chips.forEach(c => c.classList.remove('placed'));
+};
+
+// ── MAKE MARKER DRAGGABLE (inside world coords) ──
+function makeDraggable(el) {
+  let startX, startY, startLeft, startTop;
+
+  // ── RESIZE ON SCROLL ──
+  el.addEventListener('wheel', e => {
+    if (mode !== 'select') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const img = el.querySelector('img');
+    const inner = el.querySelector('.pmarker-inner');
+    const target = img || inner;
+    if (!target) return;
+    const currentSize = parseInt(target.style.width) || (img ? 36 : 34);
+    const newSize = Math.min(Math.max(currentSize + (e.deltaY < 0 ? 4 : -4), 16), 120);
+    if (img) {
+      img.style.width  = newSize + 'px';
+      img.style.height = newSize + 'px';
+      const label = el.querySelector('.mlabel');
+      if (label) label.style.fontSize = Math.max(7, Math.round(newSize * 0.22)) + 'px';
+    } else if (inner) {
+      inner.style.width  = newSize + 'px';
+      inner.style.height = newSize + 'px';
+      inner.style.fontSize = Math.max(8, Math.round(newSize * 0.32)) + 'px';
+      const label = el.querySelector('.pmlabel');
+      if (label) label.style.fontSize = Math.max(7, Math.round(newSize * 0.22)) + 'px';
+    }
+  }, { passive: false });
+
+  const onDown = e => {
+    if (e.target.classList.contains('del-btn')) return;
+    if (mode !== 'select') return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isTouch = e.touches;
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    startX    = clientX;
+    startY    = clientY;
+    startLeft = parseFloat(el.style.left);
+    startTop  = parseFloat(el.style.top);
+
+    const onMove = ev => {
+      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      el.style.left = (startLeft + (cx - startX) / zoom) + 'px';
+      el.style.top  = (startTop  + (cy - startY) / zoom) + 'px';
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  };
+
+  el.addEventListener('mousedown', onDown);
+  el.addEventListener('touchstart', onDown, { passive: false });
+}
+
+// ── MODE ──
+window.setMode = function(m) {
+  if (typeof is3D !== 'undefined' && is3D && m !== 'pan') {
+    showToast('Toggle off 3D View to edit the map', false);
+    return;
+  }
+  mode = m;
+  ['select','pan','draw','arrow'].forEach(id => {
+    document.getElementById('btn-'+id)?.classList.toggle('active', id === m);
+  });
+  viewport.classList.toggle('drawing', m === 'draw' || m === 'arrow');
+  const hints = {
+    select: '↖ Select — drag markers to move · Drag objectives & players from sidebar',
+    pan:    '✋ Pan — click and drag to move the map',
+    draw:   '✏️ Draw — freehand drawing',
+    arrow:  '➡️ Arrow — draw directional arrows'
+  };
+  document.getElementById('statusbar').textContent = hints[m];
+};
+
+window.setColor = function(el) {
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  drawColor = el.dataset.color;
+};
+
+window.undoLast = function() {
+  if (!drawHistory.length) return;
+  drawHistory.pop();
+  redrawCanvas();
+};
+
+window.clearAll = function() {
+  if (!confirm('Clear all drawings and markers?')) return;
+  drawHistory = [];
+  markersLayer.innerHTML = '';
+  document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('placed'));
+  redrawCanvas();
+};
+
+window.exportMap = function() {
+  const state = { drawHistory };
+  const blob  = new Blob([JSON.stringify(state)], { type:'application/json' });
+  const a     = document.createElement('a');
+  a.href      = URL.createObjectURL(blob);
+  a.download  = `warmap-${getWeekKey()}.json`;
+  a.click();
+  showToast('Strategy exported!', true);
+};
+
+window.importMap = function() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const state = JSON.parse(ev.target.result);
+        drawHistory = state.drawHistory || [];
+        markersLayer.innerHTML = '';
+        redrawCanvas();
+        showToast('Strategy imported!', true);
+      } catch { showToast('Invalid file', false); }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  inp.click();
+};
+
+// ── ANIMATED ARROWS (marching dash, ~30fps, only when arrows exist) ──
+let dashOffset = 0, lastDashT = 0;
+(function animateArrows(t) {
+  requestAnimationFrame(animateArrows);
+  if (document.hidden || isDrawing) return;
+  if (!drawHistory.some(p => p.arrow)) return;
+  if (t - lastDashT < 33) return;
+  lastDashT = t;
+  dashOffset -= 1.2;
+  redrawCanvas();
+})(0);
+
+// ── 3D PRESENTATION MODE ──
+let is3D = false, m3d = null;
+window.toggle3D = async function() {
+  const btn = document.getElementById('btn-3d');
+  if (!is3D) {
+    btn.textContent = '⏳ Loading…';
+    try {
+      m3d = m3d || await import('./map3d.js');
+      redrawCanvas(); // make sure ground texture is fresh
+      m3d.enter3D({ container: viewport, mapCanvas: canvas, markerEls: [...markersLayer.children] });
+      is3D = true;
+      viewport.classList.add('mode3d');
+      btn.classList.add('active');
+      setMode('pan');
+      document.getElementById('statusbar').textContent = '🎬 3D — drag empty space to orbit · drag an object to move it · scroll to zoom';
+    } catch (e) {
+      console.error(e);
+      showToast('3D view failed to load', false);
+    }
+    btn.textContent = '🎬 3D View';
+  } else {
+    is3D = false;
+    m3d && m3d.exit3D();
+    viewport.classList.remove('mode3d');
+    btn.classList.remove('active');
+    setMode('select');
+  }
+};
+
+let toastT;
+function showToast(msg, ok) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (ok ? 'ok' : 'err');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ── FIREBASE PLAYERS ──
+let allPlayers = [];
+async function loadPlayers() {
+  try {
+    const val = await (await fetch(`${DB}/guild_wars/${getWeekKey()}/registrations.json`)).json();
+    allPlayers = val ? Object.entries(val).map(([k,v]) => ({_key:k,...v})) : [];
+    renderPlayerSidebar();
+  } catch (e) {}
+}
+loadPlayers();
+setInterval(loadPlayers, 10000);
+
+function renderPlayerSidebar() {
+  ['sat','sun'].forEach(day => {
+    const dayLabel = day === 'sat' ? 'Saturday' : 'Sunday';
+    const panel    = document.getElementById('players-' + day);
+    const dayP     = allPlayers.filter(p => !p.isReserve && (p.avail === dayLabel || p.avail === 'Sat & Sun'));
+
+    if (dayP.length === 0) {
+      panel.innerHTML = '<div class="no-players">No players for this day</div>';
+      return;
+    }
+
+    const teams = [
+      { key: 'defend', label: '🛡 Defend', cls: 'defend' },
+      { key: 'attack', label: '⚔ Attack',  cls: 'attack'  }
+    ];
+
+    panel.innerHTML = teams.map(t => {
+      const tp = dayP.filter(p => p.team === t.key);
+      if (tp.length === 0) return '';
+      const chips = tp.map(p => {
+        const sideTag = p.jungleSide ? `<span class="side-tag ${p.jungleSide==='Top'?'top':'bot'}">${p.jungleSide}</span>` : '';
+        return `<div class="player-chip" data-name="${p.name}" draggable="true">
+          <span class="role-dot ${p.role}"></span>
+          <span class="pname">${p.name}</span>
+          ${sideTag}
+        </div>`;
+      }).join('');
+      return `<div class="team-group">
+        <div class="team-group-label ${t.cls}">${t.label} (${tp.length})</div>
+        <div class="player-list">${chips}</div>
+      </div>`;
+    }).join('');
+
+    // bind drag events
+    panel.querySelectorAll('.player-chip').forEach(chip => {
+      const name = chip.dataset.name;
+      const p    = allPlayers.find(x => x.name === name);
+      if (!p) return;
+      chip.addEventListener('dragstart', e => {
+        dragSrc = { type: 'player', player: p };
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+    });
+  });
+}
+
+window.switchDay = function(day) {
+  document.getElementById('tab-sat').classList.toggle('active', day === 'sat');
+  document.getElementById('tab-sun').classList.toggle('active', day === 'sun');
+  document.getElementById('players-sat').style.display = day === 'sat' ? 'flex' : 'none';
+  document.getElementById('players-sun').style.display = day === 'sun' ? 'flex' : 'none';
+};
+
+window.setMode('select');
+
+window.openHelp = function() {
+  document.getElementById('help-modal').style.display = 'flex';
+};
+window.closeHelp = function() {
+  document.getElementById('help-modal').style.display = 'none';
+};
+</script>
+</body>
+</html>

@@ -101,7 +101,9 @@
   .team .who { display: flex; flex-wrap: wrap; gap: 6px; }
   .team .who button { background: var(--bg); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
   .team .who button:hover { outline: 1px solid var(--faint); }
-  /* Page tabs + Jungle page */
+  /* Page tabs + Map page */
+  #jbody { width: 100%; height: calc(100dvh - 80px); border: 0; margin-top: 12px; border-radius: 8px; display: block; }
+  #jbody[hidden] { display: none; }
   .tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
   .tabs button { padding: 4px 12px; color: var(--muted); }
   .tabs button + button { border-left: 1px solid var(--line); }
@@ -149,18 +151,7 @@
 
   <div id="pageJungle" hidden>
     <div id="jgate" class="card" style="margin-top:16px"></div>
-    <div id="jbody" hidden>
-      <div class="jbar">
-        <div class="tabs" id="jday"><button class="on" data-d="Saturday">Saturday</button><button data-d="Sunday">Sunday</button></div>
-        <span class="faint" id="jhint">Tap a player, then tap a jungle spot. Tap a name on the map to remove it.</span>
-        <button class="btn" id="jmove">Move spots</button>
-        <span class="faint" id="jsaved"></span>
-      </div>
-      <div class="jgrid">
-        <div class="card jlist"><h2>Players <span class="faint" id="jcount"></span></h2><div id="jplayers"></div></div>
-        <div class="jmap" id="jmap"><img src="map.webp" alt="War map" draggable="false"><div id="jspots"></div></div>
-      </div>
-    </div>
+    <iframe id="jbody" hidden title="War map"></iframe>
   </div>
 
   <div id="pageDash">
@@ -283,7 +274,6 @@ const fmtWeek = w => new Date(w + "T00:00:00Z").toLocaleDateString("en-GB", { da
 /* ---------- Data ---------- */
 let weeks = [];          // sorted week keys
 const data = {};         // week -> [players]
-const jungleAll = {};    // week -> { spots, Saturday: {spot: [names]}, Sunday: {...} }
 let week = currentWeek();
 const f = { day: null, role: null, team: null, weapon: null, player: null };  // cross-filter state
 let relSort = "rel";
@@ -297,7 +287,7 @@ function ingest(w, val) {
 }
 async function loadAll() {
   const all = await (await fetch(`${DB}/guild_wars.json`)).json() || {};
-  for (const [w, v] of Object.entries(all)) { ingest(w, v.registrations); if (v.jungle) jungleAll[w] = v.jungle; }
+  for (const [w, v] of Object.entries(all)) ingest(w, v.registrations);
   weeks = [...new Set([...Object.keys(all), currentWeek()])].sort();
   render();
 }
@@ -363,7 +353,6 @@ function render() {
   renderRel(people, last12);
   renderRoster(players);
   renderAvail(players);
-  renderJungle();
 }
 
 function renderChips() {
@@ -491,7 +480,7 @@ function renderRel(people, last12) {
 }
 document.querySelectorAll("th.sort").forEach(th => th.onclick = () => { relSort = th.dataset.s; render(); });
 
-const openDays = { Saturday: true, Sunday: true };
+const openDays = { Saturday: false, Sunday: false };
 function renderAvail(players) {
   const list = filtered(players, "day");
   $("avail").innerHTML = ["Saturday", "Sunday"].map(d => {
@@ -527,95 +516,8 @@ function renderRoster(players) {
 $("prev").onclick = () => { const i = weeks.indexOf(week); if (i > 0) { week = weeks[i - 1]; render(); } };
 $("next").onclick = () => { const i = weeks.indexOf(week); if (i < weeks.length - 1) { week = weeks[i + 1]; render(); } };
 
-/* ---------- Map page (leaders only): assign players to jungle spots ---------- */
-const SPOTS = [  // default positions in % of the map; leaders can drag them with "Move spots"
-  ["our1", "Our 1", 22, 70], ["our2", "Our 2", 38, 84], ["our3", "Our 3", 62, 84], ["our4", "Our 4", 78, 70],
-  ["enemy1", "Enemy 1", 22, 30], ["enemy2", "Enemy 2", 38, 16], ["enemy3", "Enemy 3", 62, 16], ["enemy4", "Enemy 4", 78, 30],
-];
-const spotColor = id => id.startsWith("our") ? "#4f8fe0" : "#ed4245";
-let page = "dash", jDay = "Saturday", jSel = null, jMoving = false;
-
-function jungleFor(w) {
-  // spots carry over from the latest earlier week until a leader moves them
-  const j = jungleAll[w] ||= {};
-  if (!j.spots) {
-    const prev = weeks.filter(x => x < w && jungleAll[x] && jungleAll[x].spots).pop();
-    j.spots = prev ? { ...jungleAll[prev].spots } : Object.fromEntries(SPOTS.map(([id, , x, y]) => [id, { x, y }]));
-  }
-  return j;
-}
-
-async function saveJungle(part) {
-  const j = jungleFor(week);
-  $("jsaved").textContent = "Saving…";
-  try {
-    const r = await fetch(`${DB}/guild_wars/${week}/jungle/${part}.json`, { method: "PUT", body: JSON.stringify(j[part] || {}) });
-    if (!r.ok) throw 0;
-    $("jsaved").textContent = "Saved";
-  } catch { $("jsaved").textContent = "Could not save, try again"; }
-}
-
-function assign(name, spot) {
-  const j = jungleFor(week), day = j[jDay] ||= {};
-  for (const s in day) day[s] = (day[s] || []).filter(n => key(n) !== key(name));  // one spot per player per day
-  if (spot) (day[spot] ||= []).push(name);
-  jSel = null;
-  renderJungle();
-  saveJungle(jDay);
-}
-
-function renderJungle() {
-  if (page !== "jungle" || !me || !me.admin) return;
-  const j = jungleFor(week), day = j[jDay] || {};
-  const where = {};
-  for (const [s, names] of Object.entries(day)) for (const n of names || []) where[key(n)] = s;
-  const label = id => SPOTS.find(s => s[0] === id)[1];
-
-  const list = (data[week] || []).filter(p => match.day(p, jDay))
-    .sort((a, b) => !!where[key(a.name)] - !!where[key(b.name)] || a.name.localeCompare(b.name));
-  $("jcount").textContent = `· ${list.length} on ${jDay}`;
-  $("jplayers").innerHTML = list.map(p => {
-    const s = where[key(p.name)];
-    return `<button class="jp ${jSel === p.name ? "sel" : ""} ${s ? "done" : ""}" data-n="${esc(p.name)}" draggable="true">
-      <span style="color:${ROLE_COLOR[roleOf(p)]}">●</span>${esc(p.name)}<span class="s">${s ? label(s) : p.team === "attack" ? "Atk" : "Def"}</span></button>`;
-  }).join("") || `<div class="empty">No one registered for ${jDay}</div>`;
-  $("jplayers").querySelectorAll(".jp").forEach(b => {
-    b.onclick = () => { jSel = jSel === b.dataset.n ? null : b.dataset.n; renderJungle(); };
-    b.ondragstart = e => e.dataTransfer.setData("text/plain", b.dataset.n);
-  });
-
-  $("jspots").innerHTML = SPOTS.map(([id, name]) => {
-    const pos = j.spots[id] || {};
-    const names = day[id] || [];
-    return `<div class="spot ${jSel ? "target" : ""}" data-s="${id}" style="--c:${spotColor(id)};left:${pos.x}%;top:${pos.y}%">
-      <b>${name}</b>${names.map(n => `<span class="nm" data-n="${esc(n)}">${esc(n)}</span>`).join("") || '<span class="empty">empty</span>'}</div>`;
-  }).join("");
-  $("jmap").classList.toggle("moving", jMoving);
-  $("jspots").querySelectorAll(".spot").forEach(el => {
-    el.onclick = e => {
-      if (jMoving) return;
-      const nm = e.target.closest(".nm");
-      if (nm) return assign(nm.dataset.n, null);
-      if (jSel) assign(jSel, el.dataset.s);
-    };
-    el.ondragover = e => e.preventDefault();
-    el.ondrop = e => { e.preventDefault(); const n = e.dataTransfer.getData("text/plain"); if (n) assign(n, el.dataset.s); };
-    el.onpointerdown = e => {
-      if (!jMoving) return;
-      e.preventDefault();
-      const box = $("jmap").getBoundingClientRect();
-      const move = ev => {
-        const x = Math.min(98, Math.max(2, (ev.clientX - box.left) / box.width * 100));
-        const y = Math.min(98, Math.max(2, (ev.clientY - box.top) / box.height * 100));
-        j.spots[el.dataset.s] = { x: +x.toFixed(1), y: +y.toFixed(1) };
-        el.style.left = x + "%"; el.style.top = y + "%";
-      };
-      const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); saveJungle("spots"); };
-      addEventListener("pointermove", move); addEventListener("pointerup", up);
-    };
-  });
-}
-
+/* ---------- Map page (leaders only): the full war map tool in a frame ---------- */
+let page = "dash";
 async function openJungle() {
   $("jbody").hidden = true; $("jgate").hidden = false;
   if (!me) {
@@ -628,7 +530,7 @@ async function openJungle() {
     return;
   }
   $("jgate").hidden = true; $("jbody").hidden = false;
-  renderJungle();
+  if (!$("jbody").src) $("jbody").src = "map.html";
 }
 
 document.querySelectorAll(".top .tabs button").forEach(b => b.onclick = () => {
@@ -638,19 +540,6 @@ document.querySelectorAll(".top .tabs button").forEach(b => b.onclick = () => {
   $("chips").hidden = page !== "dash";
   if (page === "jungle") openJungle();
 });
-$("jday").querySelectorAll("button").forEach(b => b.onclick = () => {
-  jDay = b.dataset.d; jSel = null;
-  $("jday").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
-  renderJungle();
-});
-$("jmove").onclick = () => {
-  jMoving = !jMoving;
-  $("jmove").classList.toggle("on", jMoving);
-  $("jmove").textContent = jMoving ? "Done moving" : "Move spots";
-  $("jhint").textContent = jMoving ? "Drag a spot to where it is on the map." : "Tap a player, then tap a jungle spot. Tap a name on the map to remove it.";
-  renderJungle();
-};
-
 /* ---------- Start ---------- */
 loadAll().catch(() => $("wk").textContent = "Offline");
 setInterval(() => loadCurrent().catch(() => {}), 10000);
