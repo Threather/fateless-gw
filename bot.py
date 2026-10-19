@@ -3,6 +3,7 @@
 Saves to the same Firebase path the website used:
 guild_wars/<monday YYYY-MM-DD>/registrations
 """
+import asyncio
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -54,8 +55,7 @@ def handle_activity_login(event):
         try:
             tok = requests.post(f"{API}/oauth2/token", timeout=15, data={
                 "client_id": CLIENT_ID, "client_secret": read_env("DISCORD_CLIENT_SECRET"),
-                "grant_type": "authorization_code", "code": req["code"],
-                "redirect_uri": "https://127.0.0.1"}).json()
+                "grant_type": "authorization_code", "code": req["code"]}).json()
             headers = {"Authorization": f"Bearer {tok['access_token']}"}
             member = requests.get(f"{API}/users/@me/guilds/{req.get('guild')}/member",
                                   headers=headers, timeout=15).json()
@@ -78,6 +78,17 @@ def week_key():
 
 def regs_ref():
     return db.reference(f"guild_wars/{week_key()}/registrations")
+
+
+def last_registration(name, weeks_back=8):
+    """This member's most recent entry from an earlier week, or None."""
+    weeks = sorted((db.reference("guild_wars").get(shallow=True) or {}), reverse=True)
+    for wk in [w for w in weeks if w < week_key()][:weeks_back]:
+        regs = db.reference(f"guild_wars/{wk}/registrations").get() or {}
+        for p in regs.values():
+            if p.get("name", "").lower() == name.lower() and p.get("team") in ("attack", "defend"):
+                return p
+    return None
 
 
 def plays_sat(p): return p.get("avail") in ("Saturday", "Sat & Sun")
@@ -188,10 +199,10 @@ async def refresh_intros():
 class RegisterForm(discord.ui.View):
     """The private form a member sees after clicking Register."""
 
-    def __init__(self, name):
+    def __init__(self, name, last=None):
         super().__init__(timeout=600)
         self.name = name
-        self.answers = {}
+        self.answers = {k: last[k] for k in ("weapon1", "weapon2", "team", "avail")} if last else {}
         weapons = [(w, w, weapon_emoji(w)) for w in sorted(WEAPONS)]
         self.add_select("weapon1", "🗡️  Choose your main weapon", weapons, 0)
         self.add_select("weapon2", "🗡️  Choose your second weapon", weapons, 1)
@@ -203,6 +214,8 @@ class RegisterForm(discord.ui.View):
     def add_select(self, key, placeholder, choices, row):
         opts = [discord.SelectOption(label=label, value=value, emoji=emoji)
                 for label, value, emoji in choices]
+        for opt in opts:  # pre-fill last week's pick
+            opt.default = opt.value == self.answers.get(key)
         select = discord.ui.Select(placeholder=placeholder, options=opts, row=row)
 
         async def picked(interaction):
@@ -216,6 +229,9 @@ class RegisterForm(discord.ui.View):
     @discord.ui.button(label="Confirm Registration", emoji="✅",
                        style=discord.ButtonStyle.success, row=4)
     async def submit(self, interaction, button):
+        await self.finish(interaction)
+
+    async def finish(self, interaction):
         labels = {"weapon1": "Weapon 1", "weapon2": "Weapon 2", "team": "Team", "avail": "Day"}
         missing = [labels[k] for k in labels if k not in self.answers]
         if missing:
@@ -253,12 +269,23 @@ class RegisterButton(discord.ui.View):
     @discord.ui.button(label="Register", emoji="⚔️", style=discord.ButtonStyle.danger,
                        custom_id="gw_register")
     async def open_form(self, interaction, button):
+        await interaction.response.defer(ephemeral=True, thinking=True)
         name = interaction.user.display_name
-        embed = discord.Embed(color=GOLD, description=(
-            f"Registering as **{name}**\nPick all four, then press **Confirm Registration**."))
+        last = await asyncio.to_thread(last_registration, name)
+        view = RegisterForm(name, last)
+        if last:
+            text = (f"Registering as **{name}**\n\nLast time: **{last['weapon1']} / {last['weapon2']}** · "
+                    f"{TEAM_NAMES[last['team']]} · {last['avail']}\n"
+                    "Press **Same as last week**, or change a dropdown and press **Confirm**.")
+            same = discord.ui.Button(label="Same as last week", emoji="⚡",
+                                     style=discord.ButtonStyle.primary, row=4)
+            same.callback = view.finish
+            view.add_item(same)
+        else:
+            text = f"Registering as **{name}**\nPick all four, then press **Confirm Registration**."
+        embed = discord.Embed(color=GOLD, description=text)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        await interaction.response.send_message(embed=embed, view=RegisterForm(name),
-                                                ephemeral=True)
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
     @discord.ui.button(label="Open Dashboard", emoji="📊", style=discord.ButtonStyle.primary,
                        custom_id="gw_dashboard")
