@@ -143,7 +143,7 @@
     <h1>FATELESS · GUILD WAR</h1>
     <div class="week"><button id="prev" aria-label="Previous week">‹</button><span id="wk"></span>
       <button id="next" aria-label="Next week">›</button></div>
-    <div class="tabs"><button class="on" data-page="dash">Dashboard</button><button data-page="jungle">Jungle</button></div>
+    <div class="tabs"><button class="on" data-page="dash">Dashboard</button><button data-page="jungle">Map</button></div>
     <div class="chips" id="chips"></div>
   </div>
 
@@ -527,7 +527,7 @@ function renderRoster(players) {
 $("prev").onclick = () => { const i = weeks.indexOf(week); if (i > 0) { week = weeks[i - 1]; render(); } };
 $("next").onclick = () => { const i = weeks.indexOf(week); if (i < weeks.length - 1) { week = weeks[i + 1]; render(); } };
 
-/* ---------- Jungle page (leaders only) ---------- */
+/* ---------- Map page (leaders only): assign players to jungle spots ---------- */
 const SPOTS = [  // default positions in % of the map; leaders can drag them with "Move spots"
   ["our1", "Our 1", 22, 70], ["our2", "Our 2", 38, 84], ["our3", "Our 3", 62, 84], ["our4", "Our 4", 78, 70],
   ["enemy1", "Enemy 1", 22, 30], ["enemy2", "Enemy 2", 38, 16], ["enemy3", "Enemy 3", 62, 16], ["enemy4", "Enemy 4", 78, 30],
@@ -624,7 +624,7 @@ async function openJungle() {
     catch (e) { $("jgate").innerHTML = `<div class="down">Sign-in failed: ${esc(e.message || "please reopen the dashboard")}</div>`; return; }
   }
   if (!me.admin) {
-    $("jgate").innerHTML = `<h2>Leaders only</h2><div class="sub" style="margin:0">The Jungle page is only for the guild leaders.</div>`;
+    $("jgate").innerHTML = `<h2>Leaders only</h2><div class="sub" style="margin:0">The Map page is only for the guild leaders.</div>`;
     return;
   }
   $("jgate").hidden = true; $("jbody").hidden = false;
