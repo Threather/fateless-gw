@@ -266,7 +266,7 @@ class RegisterButton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Register", emoji="⚔️", style=discord.ButtonStyle.danger,
+    @discord.ui.button(label="Register", emoji="⚔️", style=discord.ButtonStyle.success,
                        custom_id="gw_register")
     async def open_form(self, interaction, button):
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -287,7 +287,7 @@ class RegisterButton(discord.ui.View):
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-    @discord.ui.button(label="Open Dashboard", emoji="📊", style=discord.ButtonStyle.primary,
+    @discord.ui.button(label="Open Dashboard", emoji="📊", style=discord.ButtonStyle.secondary,
                        custom_id="gw_dashboard")
     async def open_dashboard(self, interaction, button):
         await interaction.response.launch_activity()
