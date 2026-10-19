@@ -224,7 +224,7 @@ const roleOf = p => HEALER_W.has(p.weapon1) ? "healer" : TANK_W.has(p.weapon1) ?
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 // Same person, different names (old website name -> Discord nickname). Add more as "old": "discord".
-const ALIASES = { "rasmach": "xspear", "polpot": "xspear", "xinagtiandi": "xiangtuchh", "sivly": "míngyuè-月", "daes데": "daes대", "romduol": "xspear" };
+const ALIASES = { "rasmach": "xspear", "polpot": "xspear", "xinagtiandi": "xiangtuchh", "sivly": "míngyuè-月", "daes데": "daes대", "romduol": "xspear", "sleepychi(n)": "sleepychi" };
 const key = n => { const k = String(n || "").trim().toLowerCase(); return ALIASES[k] || k; };
 
 /* ---------- Discord connection (Embedded App postMessage protocol) ---------- */
