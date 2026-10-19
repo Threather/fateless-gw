@@ -39,6 +39,8 @@ def read_env(key):
 
 
 CLIENT_ID = "1561639617776590889"
+# Discord user IDs allowed to use the leaders-only Jungle page: Threather (owner), XingYun
+LEADER_IDS = {"1456963082302525493", "499764537076088852"}
 API = "https://discord.com/api/v10"
 
 
@@ -63,7 +65,8 @@ def handle_activity_login(event):
             name = member.get("nick") or user.get("global_name") or user["username"]
             avatar = (f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.png?size=64"
                       if user.get("avatar") else None)
-            ref.set({"name": name, "avatar": avatar, "at": int(time.time() * 1000)})
+            ref.set({"name": name, "avatar": avatar, "id": user["id"],
+                     "admin": user["id"] in LEADER_IDS, "at": int(time.time() * 1000)})
             threading.Timer(60, ref.delete).start()  # tidy up
         except Exception as e:
             print("Dashboard sign-in failed:", e)

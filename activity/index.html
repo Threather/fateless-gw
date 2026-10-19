@@ -101,6 +101,31 @@
   .team .who { display: flex; flex-wrap: wrap; gap: 6px; }
   .team .who button { background: var(--bg); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
   .team .who button:hover { outline: 1px solid var(--faint); }
+  /* Page tabs + Jungle page */
+  .tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .tabs button { padding: 4px 12px; color: var(--muted); }
+  .tabs button + button { border-left: 1px solid var(--line); }
+  .tabs button.on { background: var(--gold-weak); color: var(--gold); }
+  .jbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 12px; }
+  .jbar .btn.on { border-color: var(--gold); color: var(--gold); }
+  .jgrid { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start; }
+  .jlist { max-height: 80vh; overflow: auto; }
+  .jp { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 8px; border-radius: 4px; text-align: left; }
+  .jp:hover { background: var(--raised); }
+  .jp.sel { background: var(--gold-weak); outline: 1px solid var(--gold); }
+  .jp .s { margin-left: auto; font-size: 11px; color: var(--faint); }
+  .jp.done { opacity: .5; }
+  .jmap { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); user-select: none; }
+  .jmap img { width: 100%; display: block; }
+  .spot { position: absolute; transform: translate(-50%, -50%); min-width: 92px; background: rgba(30, 31, 34, .92);
+    border: 2px solid var(--c); border-radius: 6px; padding: 4px 6px; font-size: 11px; cursor: pointer; }
+  .spot.target { box-shadow: 0 0 0 3px var(--gold); }
+  .spot b { display: block; color: var(--c); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+  .spot .nm { display: block; color: var(--text); padding: 1px 0; }
+  .spot .nm:hover { text-decoration: line-through; color: var(--red); }
+  .spot .empty { color: var(--faint); padding: 0; }
+  .moving .spot { cursor: move; border-style: dashed; }
+  @media (max-width: 860px) { .jgrid { grid-template-columns: 1fr; } .jlist { max-height: 220px; } }
   .tablewrap { max-height: 420px; overflow: auto; }
 
   @media (max-width: 860px) {
@@ -118,8 +143,27 @@
     <h1>FATELESS · GUILD WAR</h1>
     <div class="week"><button id="prev" aria-label="Previous week">‹</button><span id="wk"></span>
       <button id="next" aria-label="Next week">›</button></div>
+    <div class="tabs"><button class="on" data-page="dash">Dashboard</button><button data-page="jungle">Jungle</button></div>
     <div class="chips" id="chips"></div>
   </div>
+
+  <div id="pageJungle" hidden>
+    <div id="jgate" class="card" style="margin-top:16px"></div>
+    <div id="jbody" hidden>
+      <div class="jbar">
+        <div class="tabs" id="jday"><button class="on" data-d="Saturday">Saturday</button><button data-d="Sunday">Sunday</button></div>
+        <span class="faint" id="jhint">Tap a player, then tap a jungle spot. Tap a name on the map to remove it.</span>
+        <button class="btn" id="jmove">Move spots</button>
+        <span class="faint" id="jsaved"></span>
+      </div>
+      <div class="jgrid">
+        <div class="card jlist"><h2>Players <span class="faint" id="jcount"></span></h2><div id="jplayers"></div></div>
+        <div class="jmap" id="jmap"><img src="map.webp" alt="War map" draggable="false"><div id="jspots"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pageDash">
 
   <section class="grid topgrid"><div class="grid g3" id="kpis"></div>
     <div class="card"><h2 id="rtitle"></h2><div id="roles"></div></div></section>
@@ -158,6 +202,7 @@
         <th class="sort" data-s="rel">Rel.</th><th class="sort hide-m" data-s="streak">Streak</th></tr></thead>
         <tbody id="rel"></tbody></table></div></div>
   </section>
+  </div>
 </div>
 
 <script>
@@ -187,10 +232,45 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const ALIASES = { "rasmach": "xspear", "polpot": "xspear", "xinagtiandi": "xiangtuchh" };
 const key = n => { const k = String(n || "").trim().toLowerCase(); return ALIASES[k] || k; };
 
-// Keep the Discord frame happy (Embedded App handshake); the page itself needs no sign-in.
+/* ---------- Discord connection (Embedded App postMessage protocol) ---------- */
+// The dashboard is open to everyone; only the Jungle page signs in to check who you are.
 const params = new URLSearchParams(location.search);
+const pending = {};
+function rpc(cmd, args) {
+  const nonce = crypto.randomUUID();
+  window.parent.postMessage([1, { cmd, nonce, args }], "*");
+  return new Promise((res, rej) => pending[nonce] = { res, rej });
+}
+let readyResolve; const ready = new Promise(r => readyResolve = r);
+window.addEventListener("message", ({ data }) => {
+  if (!Array.isArray(data) || !data[1]) return;
+  const msg = data[1];
+  if (msg.evt === "READY") return readyResolve();
+  const p = pending[msg.nonce];
+  if (!p) return;
+  delete pending[msg.nonce];
+  msg.evt === "ERROR" ? p.rej(msg.data) : p.res(msg.data);
+});
 if (params.get("frame_id")) window.parent.postMessage([0, { v: 1, encoding: "json", client_id: CLIENT_ID,
   frame_id: params.get("frame_id") }], "*");
+
+// The bot swaps the OAuth code for the member's name and whether they are a leader.
+let me = null;
+async function signIn() {
+  await ready;
+  const { code } = await rpc("AUTHORIZE", { client_id: CLIENT_ID, response_type: "code", state: "",
+    prompt: "none", scope: ["identify", "guilds.members.read"] });
+  const id = crypto.randomUUID();
+  await fetch(`${DB}/activity_auth/${id}.json`, { method: "PUT",
+    body: JSON.stringify({ code, guild: params.get("guild_id"), at: Date.now() }) });
+  for (let i = 0; i < 40; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    const r = await (await fetch(`${DB}/activity_auth/${id}.json`)).json();
+    if (r && r.name) return r;
+    if (r && r.error) throw new Error(r.error);
+  }
+  throw new Error("The bot did not answer. Is it running?");
+}
 
 function currentWeek() {
   const now = new Date(Date.now() + 7 * 3600e3);  // Cambodia time
@@ -203,6 +283,7 @@ const fmtWeek = w => new Date(w + "T00:00:00Z").toLocaleDateString("en-GB", { da
 /* ---------- Data ---------- */
 let weeks = [];          // sorted week keys
 const data = {};         // week -> [players]
+const jungleAll = {};    // week -> { spots, Saturday: {spot: [names]}, Sunday: {...} }
 let week = currentWeek();
 const f = { day: null, role: null, team: null, weapon: null, player: null };  // cross-filter state
 let relSort = "rel";
@@ -216,7 +297,7 @@ function ingest(w, val) {
 }
 async function loadAll() {
   const all = await (await fetch(`${DB}/guild_wars.json`)).json() || {};
-  for (const [w, v] of Object.entries(all)) ingest(w, v.registrations);
+  for (const [w, v] of Object.entries(all)) { ingest(w, v.registrations); if (v.jungle) jungleAll[w] = v.jungle; }
   weeks = [...new Set([...Object.keys(all), currentWeek()])].sort();
   render();
 }
@@ -282,6 +363,7 @@ function render() {
   renderRel(people, last12);
   renderRoster(players);
   renderAvail(players);
+  renderJungle();
 }
 
 function renderChips() {
@@ -444,6 +526,130 @@ function renderRoster(players) {
 
 $("prev").onclick = () => { const i = weeks.indexOf(week); if (i > 0) { week = weeks[i - 1]; render(); } };
 $("next").onclick = () => { const i = weeks.indexOf(week); if (i < weeks.length - 1) { week = weeks[i + 1]; render(); } };
+
+/* ---------- Jungle page (leaders only) ---------- */
+const SPOTS = [  // default positions in % of the map; leaders can drag them with "Move spots"
+  ["our1", "Our 1", 22, 70], ["our2", "Our 2", 38, 84], ["our3", "Our 3", 62, 84], ["our4", "Our 4", 78, 70],
+  ["enemy1", "Enemy 1", 22, 30], ["enemy2", "Enemy 2", 38, 16], ["enemy3", "Enemy 3", 62, 16], ["enemy4", "Enemy 4", 78, 30],
+];
+const spotColor = id => id.startsWith("our") ? "#4f8fe0" : "#ed4245";
+let page = "dash", jDay = "Saturday", jSel = null, jMoving = false;
+
+function jungleFor(w) {
+  // spots carry over from the latest earlier week until a leader moves them
+  const j = jungleAll[w] ||= {};
+  if (!j.spots) {
+    const prev = weeks.filter(x => x < w && jungleAll[x] && jungleAll[x].spots).pop();
+    j.spots = prev ? { ...jungleAll[prev].spots } : Object.fromEntries(SPOTS.map(([id, , x, y]) => [id, { x, y }]));
+  }
+  return j;
+}
+
+async function saveJungle(part) {
+  const j = jungleFor(week);
+  $("jsaved").textContent = "Saving…";
+  try {
+    const r = await fetch(`${DB}/guild_wars/${week}/jungle/${part}.json`, { method: "PUT", body: JSON.stringify(j[part] || {}) });
+    if (!r.ok) throw 0;
+    $("jsaved").textContent = "Saved";
+  } catch { $("jsaved").textContent = "Could not save, try again"; }
+}
+
+function assign(name, spot) {
+  const j = jungleFor(week), day = j[jDay] ||= {};
+  for (const s in day) day[s] = (day[s] || []).filter(n => key(n) !== key(name));  // one spot per player per day
+  if (spot) (day[spot] ||= []).push(name);
+  jSel = null;
+  renderJungle();
+  saveJungle(jDay);
+}
+
+function renderJungle() {
+  if (page !== "jungle" || !me || !me.admin) return;
+  const j = jungleFor(week), day = j[jDay] || {};
+  const where = {};
+  for (const [s, names] of Object.entries(day)) for (const n of names || []) where[key(n)] = s;
+  const label = id => SPOTS.find(s => s[0] === id)[1];
+
+  const list = (data[week] || []).filter(p => match.day(p, jDay))
+    .sort((a, b) => !!where[key(a.name)] - !!where[key(b.name)] || a.name.localeCompare(b.name));
+  $("jcount").textContent = `· ${list.length} on ${jDay}`;
+  $("jplayers").innerHTML = list.map(p => {
+    const s = where[key(p.name)];
+    return `<button class="jp ${jSel === p.name ? "sel" : ""} ${s ? "done" : ""}" data-n="${esc(p.name)}" draggable="true">
+      <span style="color:${ROLE_COLOR[roleOf(p)]}">●</span>${esc(p.name)}<span class="s">${s ? label(s) : p.team === "attack" ? "Atk" : "Def"}</span></button>`;
+  }).join("") || `<div class="empty">No one registered for ${jDay}</div>`;
+  $("jplayers").querySelectorAll(".jp").forEach(b => {
+    b.onclick = () => { jSel = jSel === b.dataset.n ? null : b.dataset.n; renderJungle(); };
+    b.ondragstart = e => e.dataTransfer.setData("text/plain", b.dataset.n);
+  });
+
+  $("jspots").innerHTML = SPOTS.map(([id, name]) => {
+    const pos = j.spots[id] || {};
+    const names = day[id] || [];
+    return `<div class="spot ${jSel ? "target" : ""}" data-s="${id}" style="--c:${spotColor(id)};left:${pos.x}%;top:${pos.y}%">
+      <b>${name}</b>${names.map(n => `<span class="nm" data-n="${esc(n)}">${esc(n)}</span>`).join("") || '<span class="empty">empty</span>'}</div>`;
+  }).join("");
+  $("jmap").classList.toggle("moving", jMoving);
+  $("jspots").querySelectorAll(".spot").forEach(el => {
+    el.onclick = e => {
+      if (jMoving) return;
+      const nm = e.target.closest(".nm");
+      if (nm) return assign(nm.dataset.n, null);
+      if (jSel) assign(jSel, el.dataset.s);
+    };
+    el.ondragover = e => e.preventDefault();
+    el.ondrop = e => { e.preventDefault(); const n = e.dataTransfer.getData("text/plain"); if (n) assign(n, el.dataset.s); };
+    el.onpointerdown = e => {
+      if (!jMoving) return;
+      e.preventDefault();
+      const box = $("jmap").getBoundingClientRect();
+      const move = ev => {
+        const x = Math.min(98, Math.max(2, (ev.clientX - box.left) / box.width * 100));
+        const y = Math.min(98, Math.max(2, (ev.clientY - box.top) / box.height * 100));
+        j.spots[el.dataset.s] = { x: +x.toFixed(1), y: +y.toFixed(1) };
+        el.style.left = x + "%"; el.style.top = y + "%";
+      };
+      const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); saveJungle("spots"); };
+      addEventListener("pointermove", move); addEventListener("pointerup", up);
+    };
+  });
+}
+
+async function openJungle() {
+  $("jbody").hidden = true; $("jgate").hidden = false;
+  if (!me) {
+    $("jgate").innerHTML = `<div class="muted">Checking who you are…</div>`;
+    try { me = await signIn(); }
+    catch (e) { $("jgate").innerHTML = `<div class="down">Sign-in failed: ${esc(e.message || "please reopen the dashboard")}</div>`; return; }
+  }
+  if (!me.admin) {
+    $("jgate").innerHTML = `<h2>Leaders only</h2><div class="sub" style="margin:0">The Jungle page is only for the guild leaders.</div>`;
+    return;
+  }
+  $("jgate").hidden = true; $("jbody").hidden = false;
+  renderJungle();
+}
+
+document.querySelectorAll(".top .tabs button").forEach(b => b.onclick = () => {
+  page = b.dataset.page;
+  document.querySelectorAll(".top .tabs button").forEach(x => x.classList.toggle("on", x === b));
+  $("pageDash").hidden = page !== "dash"; $("pageJungle").hidden = page !== "jungle";
+  $("chips").hidden = page !== "dash";
+  if (page === "jungle") openJungle();
+});
+$("jday").querySelectorAll("button").forEach(b => b.onclick = () => {
+  jDay = b.dataset.d; jSel = null;
+  $("jday").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  renderJungle();
+});
+$("jmove").onclick = () => {
+  jMoving = !jMoving;
+  $("jmove").classList.toggle("on", jMoving);
+  $("jmove").textContent = jMoving ? "Done moving" : "Move spots";
+  $("jhint").textContent = jMoving ? "Drag a spot to where it is on the map." : "Tap a player, then tap a jungle spot. Tap a name on the map to remove it.";
+  renderJungle();
+};
 
 /* ---------- Start ---------- */
 loadAll().catch(() => $("wk").textContent = "Offline");
