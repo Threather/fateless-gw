@@ -6,120 +6,119 @@
 <title>Fateless GW</title>
 <style>
   :root {
-    --bg: #ffffff; --surface: #f7f7f5; --hover: #efefed; --line: #e9e9e7;
-    --text: #37352f; --muted: #787774; --faint: #a5a29d;
-    --ink: #191919; --danger: #e03e3e;
+    --bg: #2b2d31; --surface: #35373c; --line: #3f4147;
+    --text: #f2f3f5; --muted: #b5bac1; --faint: #80848e;
+    --accent: #d4a84a; --accent-weak: rgba(212, 168, 74, .14);
+    --danger: #e5484d;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--text); min-height: 100dvh; }
-  body { font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-    font-variant-numeric: tabular-nums; padding: 0 24px calc(48px + env(safe-area-inset-bottom)); }
-  button { font: inherit; color: inherit; }
-  .wrap { max-width: 900px; margin: 0 auto; }
+  body { font: 13px/20px system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
+    padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+  button, select { font: inherit; color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .label { font-size: 11px; line-height: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .muted { color: var(--muted); }
 
-  /* Page header, Notion style */
-  .icon { width: 72px; height: 72px; background: var(--ink); color: #fff; border-radius: 6px; display: grid;
-    place-items: center; font-size: 36px; margin: 48px 0 16px; }
-  h1 { font-size: 36px; line-height: 1.2; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
-  .props { display: grid; grid-template-columns: 140px 1fr; row-gap: 4px; color: var(--muted); padding-bottom: 12px;
-    border-bottom: 1px solid var(--line); }
-  .props b { font-weight: 400; color: var(--text); }
-  .banner { margin: 28px 0 8px; background: var(--ink); padding: 6px; border-radius: 2px;
-    background-image: repeating-linear-gradient(90deg, #fff 0 6px, var(--ink) 6px 12px); }
-  .banner div { background: var(--ink); color: #fff; text-align: center; font-weight: 700; letter-spacing: .3em;
-    padding: 6px; font-size: 13px; }
-  .banner span { background: #fff; color: var(--ink); padding: 2px 14px; }
-  h2 { font-size: 16px; font-weight: 700; color: var(--ink); margin: 28px 0 8px; display: flex; align-items: center; gap: 8px; }
-  h2 .muted { font-weight: 400; font-size: 14px; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 20px 0 16px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+  header .muted { margin-left: auto; }
 
-  /* Day cards */
-  .days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .day { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; text-align: left; cursor: pointer;
-    padding: 12px 14px; box-shadow: 0 1px 2px rgba(15, 15, 15, .04); }
+  /* Register bar */
+  #reg { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .who { display: flex; align-items: center; gap: 8px; margin-right: 8px; font-weight: 600; }
+  .who img { width: 24px; height: 24px; border-radius: 50%; background: var(--line); }
+  select, .wpick { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; height: 36px; padding: 0 8px;
+    min-width: 170px; font-size: 16px; }
+  @media (min-width: 640px) { select { font-size: 13px; } }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: 0; height: 34px; padding: 0 12px; cursor: pointer; color: var(--muted); }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent-weak); color: var(--accent); }
+  .seg button .full { color: var(--danger); font-size: 11px; }
+  .go { margin-left: auto; height: 36px; padding: 0 20px; border: 0; border-radius: 6px; background: var(--accent);
+    color: #111; font-weight: 600; cursor: pointer; }
+  .go:disabled { background: var(--line); color: var(--faint); cursor: default; }
+  .status { display: flex; align-items: center; gap: 8px; }
+  .status .ok { color: var(--accent); }
+  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; margin-left: auto; }
+  .msg { color: var(--danger); margin-top: 8px; }
+  .msg:empty { display: none; }
+
+  /* Day strip */
+  .days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 24px 0; }
+  .day { background: none; border: 0; text-align: left; cursor: pointer; padding: 8px; margin: -8px; border-radius: 6px; }
   .day:hover { background: var(--surface); }
-  .day.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
-  .day .t { color: var(--muted); font-size: 12px; }
-  .day .n { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.3; }
-  .day .n small { font-size: 14px; color: var(--faint); font-weight: 400; }
-  .bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 8px; }
-  .bar i { display: block; height: 100%; background: var(--ink); }
+  .day.on { background: var(--accent-weak); }
+  .day.on .label { color: var(--accent); }
+  .day .n { font-size: 28px; line-height: 32px; font-weight: 600; margin: 4px 0 8px; }
+  .day .n small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .bar { height: 2px; background: var(--line); }
+  .bar i { display: block; height: 100%; background: var(--muted); }
+  .bar i.hot { background: var(--accent); }
   .bar i.full { background: var(--danger); }
 
   /* Weapons + roster */
-  .grid { display: grid; grid-template-columns: 280px 1fr; gap: 32px; }
-  .seg { display: inline-flex; gap: 2px; margin-left: auto; }
-  .seg button { background: none; border: 0; border-radius: 4px; padding: 2px 8px; cursor: pointer; color: var(--muted);
-    font-size: 13px; }
-  .seg button:hover { background: var(--hover); }
-  .seg button.on { background: var(--ink); color: #fff; }
-  .w { display: grid; grid-template-columns: 1fr 56px 20px; align-items: center; gap: 10px; width: 100%;
-    padding: 4px 6px; background: none; border: 0; border-radius: 4px; cursor: pointer; text-align: left; }
-  .w:hover { background: var(--hover); }
-  .w.on { background: var(--ink); color: #fff; }
-  .w.on .bar { background: #555; } .w.on .bar i { background: #fff; } .w.on .c { color: #fff; }
-  .w .bar { margin: 0; }
-  .w.dim { opacity: .45; }
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+  .head { display: flex; align-items: center; gap: 8px; height: 36px; border-bottom: 1px solid var(--line); }
+  .head .seg { margin-left: auto; }
+  .head .seg button { height: 28px; font-size: 12px; }
+  .w { display: grid; grid-template-columns: 1fr 64px 24px; align-items: center; gap: 12px; width: 100%; height: 32px;
+    padding: 0 8px; background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left; }
+  .w:hover { background: var(--surface); }
+  .w.on { background: var(--accent-weak); color: var(--accent); }
+  .w .bar { height: 4px; border-radius: 2px; }
+  .w.dim .bar i { opacity: .35; }
   .w .c { text-align: right; color: var(--muted); }
-  .unused { color: var(--faint); padding: 6px; font-size: 13px; }
+  .unused { color: var(--faint); padding: 8px; }
   details summary { list-style: none; }
   details summary::-webkit-details-marker { display: none; }
-  details:not([open]) h2::after { content: "▸"; color: var(--faint); }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; }
   .chips:empty { display: none; }
-  .chip { background: var(--hover); border: 0; border-radius: 3px; padding: 0 6px; cursor: pointer; font-size: 13px; }
-  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 13px; }
+  .chip { background: var(--accent-weak); color: var(--accent); border: 0; border-radius: 999px; padding: 2px 10px; cursor: pointer; }
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-weight: 400; color: var(--muted); font-size: 13px; }
-  td, th { padding: 6px 8px; border-bottom: 1px solid var(--line); }
-  th + th, td + td { border-left: 1px solid var(--line); }
-  tr:hover td { background: var(--surface); }
-  .tag { background: var(--hover); border-radius: 3px; padding: 0 6px; font-size: 13px; white-space: nowrap; }
+  th { text-align: left; font-weight: 400; }
+  td, th { height: 36px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+  tr.me td:first-child { box-shadow: inset 2px 0 var(--accent); }
   .r2 { display: none; }
   .empty { color: var(--faint); padding: 16px 8px; }
 
-  @media (max-width: 680px) {
-    body { padding: 0 16px calc(32px + env(safe-area-inset-bottom)); }
-    .icon { width: 56px; height: 56px; font-size: 28px; margin-top: 28px; }
-    h1 { font-size: 28px; }
-    .props { grid-template-columns: 110px 1fr; }
-    .days { gap: 8px; }
-    .day { padding: 10px; }
-    .day .n { font-size: 22px; }
-    .grid { grid-template-columns: 1fr; gap: 0; }
+  @media (max-width: 640px) {
+    .days { gap: 16px; }
+    .day .n { font-size: 22px; line-height: 28px; }
+    .grid { grid-template-columns: 1fr; }
+    .form select, .form .wpick { flex: 1 1 100%; }
+    .form .seg { flex: 1; }
+    .form .seg button { flex: 1; height: 40px; }
+    .go { flex: 1 1 100%; height: 44px; margin: 0; }
+    .head .seg button { height: 32px; }
     thead, .col { display: none; }
-    .r2 { display: block; color: var(--muted); font-size: 13px; }
-    th + th, td + td { border-left: 0; }
+    .r2 { display: block; color: var(--muted); }
+    td { height: auto; padding: 8px; }
   }
-  @media (min-width: 681px) { details > summary { pointer-events: none; } }
+  @media (min-width: 641px) { details[open] > summary, details > summary { pointer-events: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="icon">⚔</div>
-  <h1>Fateless · Guild War</h1>
-  <div class="props">
-    <span>📅 Week of</span><b id="week"></b>
-    <span>👥 Registered</span><b id="total"></b>
-    <span>🔄 Resets</span><b>Every Monday</b>
-  </div>
+  <header><h1>FATELESS GW</h1><span class="muted" id="week"></span><span class="muted" id="total"></span></header>
 
-  <div class="banner"><div><span>GUILD WAR ROSTER</span></div></div>
 
-  <h2>Slots</h2>
   <section class="days" id="days"></section>
 
   <section class="grid">
     <details id="wbox" open>
-      <summary><h2>Weapons <span class="muted" id="wsel"></span></h2></summary>
+      <summary class="head label">Weapons <span id="wsel"></span></summary>
       <div id="weapons"></div>
     </details>
     <div>
-      <h2>Roster <span class="seg" id="roles"></span></h2>
+      <div class="head"><span class="label">Roster</span>
+        <span class="seg" id="roles"></span></div>
       <div class="chips" id="chips"></div>
       <table>
-        <thead><tr><th>Aa Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
+        <thead><tr class="label"><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -149,7 +148,7 @@ function weekKey() {
 }
 const WEEK = weekKey();
 const REGS = `${DB}/guild_wars/${WEEK}/registrations`;
-$("week").textContent = new Date(WEEK + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+$("week").textContent = "Week of " + WEEK;
 
 /* ---------- Discord connection (Embedded App postMessage protocol) ---------- */
 const params = new URLSearchParams(location.search);
@@ -185,7 +184,7 @@ async function load() {
     players = Object.entries(val || {}).map(([key, p]) => ({ key, ...p }))
       .sort((a, b) => a.registeredAt - b.registeredAt);
     render();
-  } catch { $("total").textContent = "offline"; }
+  } catch { $("total").textContent = "· offline"; }
 }
 
 const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
@@ -203,7 +202,7 @@ function toggle(k, v) { filter[k] = filter[k] === v ? null : v; render(); }
 addEventListener("keydown", e => { if (e.key === "Escape") { for (const k in filter) filter[k] = null; render(); } });
 
 function render() {
-  $("total").textContent = players.length + " players";
+  $("total").textContent = "· " + players.length + " registered";
 
   // Day strip — the KPIs and the day filter in one
   const forDays = filtered("day"), main = forDays.filter(p => !p.isReserve);
@@ -212,7 +211,7 @@ function render() {
   $("days").innerHTML = cells.map(([d, n, max]) => {
     const pct = n / max, cls = pct >= 1 ? "full" : pct >= .9 ? "hot" : "";
     return `<button class="day ${filter.day === d ? "on" : ""}" data-d="${d}">
-      <div class="t">${d === "reserve" ? "Reserve" : d}</div>
+      <div class="label">${d === "reserve" ? "Reserve" : d}</div>
       <div class="n">${n} <small>/ ${max}</small></div>
       <div class="bar"><i class="${cls}" style="width:${Math.min(100, pct * 100)}%"></i></div></button>`;
   }).join("");
@@ -226,7 +225,7 @@ function render() {
       <span>${esc(w)}</span><span class="bar"><i style="width:${n / max * 100}%"></i></span><span class="c">${n}</span></button>`).join("")
     + (used.length < WEAPONS.length ? `<div class="unused">+${WEAPONS.length - used.length} unused</div>` : "");
   $("weapons").querySelectorAll(".w").forEach(b => b.onclick = () => toggle("weapon", b.dataset.w));
-  $("wsel").textContent = filter.weapon ? "— " + filter.weapon : "";
+  $("wsel").textContent = filter.weapon ? "· " + filter.weapon : "";
 
   // Team segmented filter
   const forTeam = filtered("team");
@@ -250,7 +249,7 @@ function render() {
     const team = TEAM[p.team] || "—", day = p.isReserve ? p.avail + " · reserve" : p.avail;
     return `<tr class="${isMe(p) ? "me" : ""}"><td>${esc(p.name)}
       <div class="r2">${esc(p.weapon1)} / ${esc(p.weapon2)} · ${team} · ${esc(day)}</div></td>
-      <td class="col">${esc(p.weapon1)} / ${esc(p.weapon2)}</td><td class="col"><span class="tag">${team}</span></td>
+      <td class="col">${esc(p.weapon1)} / ${esc(p.weapon2)}</td><td class="col muted">${team}</td>
       <td class="col muted">${esc(day)}</td></tr>`;
   }).join("") || `<tr><td colspan="4" class="empty">${players.length ? "No one matches these filters" : "No registrations yet"}</td></tr>`;
 
