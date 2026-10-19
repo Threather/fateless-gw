@@ -159,6 +159,7 @@ const FAMILIES = ["Sword", "Spear", "Blade", "Twinblades", "Rope Dart", "Gauntle
 const HEALER_W = new Set(["Panacea Fan", "Soulshade Umbrella"]);
 const TANK_W = new Set(["Thundercry Blade", "Stormbreaker Spear"]);
 const ROLES = [["healer", "✚ Healer"], ["tank", "🛡 Tank"], ["dps", "🗡 DPS"]];
+const ROLE_COLOR = { healer: "#3ba55d", tank: "#f0883e", dps: "#4f8fe0" };
 // Healer weapon wins, then tank weapon, otherwise DPS
 const roleOf = p => [p.weapon1, p.weapon2].some(w => HEALER_W.has(w)) ? "healer"
   : [p.weapon1, p.weapon2].some(w => TANK_W.has(w)) ? "tank" : "dps";
@@ -309,9 +310,9 @@ function renderKpis(players, prev, missing, wi) {
     return `<g class="hit ${f.role && f.role !== r ? "dim" : ""}" data-r="${r}">
       <rect x="${i * colW}" y="0" width="${colW}" height="${H}" fill="transparent"/>
       <rect x="${x - 18}" y="${base - bh}" width="36" height="${bh}" rx="3" fill="var(--bg)"/>
-      <rect x="${x - 18}" y="${base - h}" width="36" height="${h}" rx="3" fill="var(--gold)"/>
+      <rect x="${x - 18}" y="${base - h}" width="36" height="${h}" rx="3" fill="${ROLE_COLOR[r]}"/>
       <text x="${x}" y="${base - h - 4}" text-anchor="middle" style="fill:var(--text)">${n} <tspan style="fill:var(--faint)">${pct}%</tspan></text>
-      <text x="${x}" y="${H - 3}" text-anchor="middle" style="fill:${f.role === r ? "var(--gold)" : "var(--text)"}">${label}</text></g>`;
+      <text x="${x}" y="${H - 3}" text-anchor="middle" style="fill:${ROLE_COLOR[r]}">${label}</text></g>`;
   }).join("")}</svg>`;
   $("roles").querySelectorAll("[data-r]").forEach(b => b.onclick = () => toggle("role", b.dataset.r));
 }
@@ -397,7 +398,7 @@ function renderRoster(players) {
   $("roster").innerHTML = list.map(p => `<tr class="${f.player === key(p.name) ? "sel" : ""}" data-p="${esc(key(p.name))}">
       <td>${esc(p.name)}${p.isReserve ? ' <span class="tag">reserve</span>' : ""}</td>
       <td class="muted">${esc(p.weapon1)} / ${esc(p.weapon2)}</td>
-      <td class="muted">${ROLES.find(r => r[0] === roleOf(p))[1]}</td>
+      <td style="color:${ROLE_COLOR[roleOf(p)]}">${ROLES.find(r => r[0] === roleOf(p))[1]}</td>
       <td><span class="tag ${p.team}">${p.team === "attack" ? "Attack" : p.team === "defend" ? "Defend" : "—"}</span></td>
       <td class="muted">${esc(p.avail)}</td></tr>`).join("")
     || `<tr><td colspan="5" class="empty">${players.length ? "No one matches these filters" : "No registrations this week"}</td></tr>`;
