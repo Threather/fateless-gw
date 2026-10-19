@@ -304,14 +304,14 @@ function renderKpis(players, prev, missing, wi) {
   const group = filtered(players, "role");
   $("rtitle").textContent = "Roles · " + (f.day || "everyone");
   const counts = ROLES.map(([r, label]) => [r, label, group.filter(p => roleOf(p) === r).length]);
-  const top = Math.max(1, ...counts.map(c => c[2])), W = 240, H = 104, base = H - 18, colW = W / 3, bh = base - 16;
+  const top = Math.max(1, ...counts.map(c => c[2])), W = 240, H = 104, y0 = H - 18, colW = W / 3, bh = y0 - 16;
   $("roles").innerHTML = `<svg viewBox="0 0 ${W} ${H}">${counts.map(([r, label, n], i) => {
     const x = i * colW + colW / 2, h = n / top * bh, pct = group.length ? Math.round(n / group.length * 100) : 0;
     return `<g class="hit ${f.role && f.role !== r ? "dim" : ""}" data-r="${r}">
       <rect x="${i * colW}" y="0" width="${colW}" height="${H}" fill="transparent"/>
-      <rect x="${x - 18}" y="${base - bh}" width="36" height="${bh}" rx="3" fill="var(--bg)"/>
-      <rect x="${x - 18}" y="${base - h}" width="36" height="${h}" rx="3" fill="${ROLE_COLOR[r]}"/>
-      <text x="${x}" y="${base - h - 4}" text-anchor="middle" style="fill:var(--text)">${n} <tspan style="fill:var(--faint)">${pct}%</tspan></text>
+      <rect x="${x - 18}" y="${y0 - bh}" width="36" height="${bh}" rx="3" fill="var(--bg)"/>
+      <rect x="${x - 18}" y="${y0 - h}" width="36" height="${h}" rx="3" fill="${ROLE_COLOR[r]}"/>
+      <text x="${x}" y="${y0 - h - 4}" text-anchor="middle" style="fill:var(--text)">${n} <tspan style="fill:var(--faint)">${pct}%</tspan></text>
       <text x="${x}" y="${H - 3}" text-anchor="middle" style="fill:${ROLE_COLOR[r]}">${label}</text></g>`;
   }).join("")}</svg>`;
   $("roles").querySelectorAll("[data-r]").forEach(b => b.onclick = () => toggle("role", b.dataset.r));
