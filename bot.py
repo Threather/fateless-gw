@@ -147,7 +147,6 @@ firebase_admin.initialize_app(credentials.Certificate(str(HERE / "firebase-key.j
                               {"databaseURL": DATABASE_URL})
 
 INTRO_TITLE = "⚔️ GUILD WAR REGISTRATION"
-BANNER = HERE / "assets" / "gw-register.png"
 TEAM_NAMES = {"attack": "⚔️ Attack", "defend": "🛡️ Defend"}
 DAY_EMOJI = {"Saturday": "📅", "Sunday": "📆", "Sat & Sun": "🔥"}
 GOLD = 0xD4A24C
@@ -182,7 +181,6 @@ def build_intro():
     embed.add_field(name="📅 Saturday", value=f"{bar(sat, DAY_MAX)}\n**{sat}** / {DAY_MAX}")
     embed.add_field(name="📆 Sunday", value=f"{bar(sun, DAY_MAX)}\n**{sun}** / {DAY_MAX}")
     embed.add_field(name="🪑 Reserve", value=f"​\n**{reserves}**")
-    embed.set_image(url="attachment://gw-register.png")
     embed.set_footer(text=f"Week of {week_key()} • Resets every Monday • Name = your server nickname")
     return embed
 
@@ -313,8 +311,7 @@ async def on_ready():
                if m.author == client.user and m.components]
         for m in old:  # replace earlier versions with one fresh message
             await m.delete()
-        msg = await channel.send(embed=build_intro(), view=RegisterButton(),
-                                 file=discord.File(BANNER, filename="gw-register.png"))
+        msg = await channel.send(embed=build_intro(), view=RegisterButton())
         intro_messages.append(msg)
     print(f"Logged in as {client.user} — Register button is ready")
 
