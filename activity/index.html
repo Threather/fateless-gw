@@ -40,6 +40,9 @@
   .grid { display: grid; gap: 16px; }
   .g4 { grid-template-columns: repeat(4, 1fr); }
   .g3 { grid-template-columns: repeat(3, 1fr); }
+  .topgrid { grid-template-columns: 3fr 1.4fr; }
+  .topgrid .card { padding: 12px; }
+  #roles svg { width: 100%; display: block; margin-top: 6px; }
   .g2 { grid-template-columns: 2fr 1fr; }
   .g2b { grid-template-columns: 1fr 1fr; }
 
@@ -47,7 +50,7 @@
   .kpi { cursor: pointer; transition: background .15s; }
   .kpi:hover { background: var(--raised); }
   .kpi.on { box-shadow: inset 0 0 0 1px var(--gold); }
-  .kpi .v { font-size: 30px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
+  .kpi .v { font-size: 26px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
   .kpi .v small { font-size: 14px; color: var(--faint); font-weight: 400; }
   .delta { font-size: 12px; margin-left: 6px; } .up { color: var(--gold); } .down { color: var(--red); }
   .meter { height: 4px; background: var(--line); border-radius: 2px; margin: 8px 0 6px; overflow: hidden; }
@@ -88,7 +91,7 @@
 
   @media (max-width: 860px) {
     .g4 { grid-template-columns: repeat(2, 1fr); }
-    .g2, .g2b { grid-template-columns: 1fr; }
+    .g2, .g2b, .topgrid { grid-template-columns: 1fr; }
     .chips { margin-left: 0; width: 100%; }
     .hide-m { display: none; }
   }
@@ -104,8 +107,8 @@
     <div class="chips" id="chips"></div>
   </div>
 
-  <section class="grid g3" id="kpis"></section>
-  <section class="card"><h2 id="rtitle"></h2><div class="sub">From weapons · click a bar to filter</div><div id="roles"></div></section>
+  <section class="grid topgrid"><div class="grid g3" id="kpis"></div>
+    <div class="card"><h2 id="rtitle"></h2><div id="roles"></div></div></section>
 
   <section class="card" style="margin-top:16px"><h2>Roster <span class="faint" id="rcount"></span></h2>
       <div class="sub">This week · follows every filter</div>
@@ -298,10 +301,10 @@ function renderKpis(players, prev, missing, wi) {
 
   // Role breakdown for the selected box
   const group = filtered(players, "role");
-  $("rtitle").textContent = "Roles · " + (f.day ? "can play " + f.day : "everyone registered");
+  $("rtitle").textContent = "Roles · " + (f.day || "everyone");
   const counts = ROLES.map(([r, label]) => [r, label, group.filter(p => roleOf(p) === r).length]);
-  const top = Math.max(1, ...counts.map(c => c[2])), W = 520, L = 80, rowH = 26, bw = W - L - 50;
-  $("roles").innerHTML = `<svg viewBox="0 0 ${W} ${counts.length * rowH}" style="width:100%;max-width:640px">${counts.map(([r, label, n], i) => {
+  const top = Math.max(1, ...counts.map(c => c[2])), W = 260, L = 72, rowH = 24, bw = W - L - 52;
+  $("roles").innerHTML = `<svg viewBox="0 0 ${W} ${counts.length * rowH}">${counts.map(([r, label, n], i) => {
     const y = i * rowH, pct = group.length ? Math.round(n / group.length * 100) : 0;
     return `<g class="hit ${f.role && f.role !== r ? "dim" : ""}" data-r="${r}">
       <rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
