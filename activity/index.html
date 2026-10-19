@@ -164,11 +164,15 @@
       <div class="sub">This week · follows every filter</div>
       <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Role</th><th>Team</th><th>Day</th></tr></thead>
         <tbody id="roster"></tbody></table></div></div>
-    <div class="card"><h2>Not signed up</h2>
-      <div class="sub">Registered 2+ times, active since August, not signed up this week</div>
-      <div class="missing" id="missing"></div>
-      <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
+    <div class="card"><h2>Team composition</h2>
+      <div class="sub">Roles per team and day · click a block to filter</div>
+      <div id="teamchart"></div></div>
   </section>
+
+  <section class="card"><h2>Not signed up</h2>
+    <div class="sub">Registered 2+ times, active since August, not signed up this week</div>
+    <div class="missing" id="missing"></div>
+    <button class="btn" id="copy" style="margin-top:10px">Copy names</button></section>
 
   <section class="card"><h2>Availability breakdown</h2>
     <div class="sub">Click a day to show or hide its teams · click a name to filter</div>
@@ -353,6 +357,7 @@ function render() {
   renderRel(people, last12);
   renderRoster(players);
   renderAvail(players);
+  renderTeamChart(players);
 }
 
 function renderChips() {
@@ -479,6 +484,47 @@ function renderRel(people, last12) {
   $("rel").querySelectorAll("[data-p]").forEach(r => r.onclick = () => toggle("player", r.dataset.p));
 }
 document.querySelectorAll("th.sort").forEach(th => th.onclick = () => { relSort = th.dataset.s; render(); });
+
+// Stacked columns: Saturday/Sunday × Attack/Defend, each stacked Healer → Tank → DPS
+function renderTeamChart(players) {
+  const list = players.filter(p => ["weapon", "player"].every(k => f[k] === null || match[k](p, f[k])));
+  const cols = [];
+  for (const d of ["Saturday", "Sunday"]) for (const t of ["attack", "defend"]) {
+    const ps = list.filter(p => match.day(p, d) && p.team === t);
+    cols.push({ d, t, total: ps.length, parts: ROLES.map(([r]) => [r, ps.filter(p => roleOf(p) === r).length]) });
+  }
+  const top = Math.max(4, ...cols.map(c => c.total));
+  const W = 360, H = 250, base = H - 40, plotH = base - 22, colW = 54, L = 24, gap = 22;
+  const xOf = i => L + i * colW + Math.floor(i / 2) * gap + (i % 2) * 8;
+  const yOf = v => v / top * plotH;
+  let svg = "";
+  cols.forEach((c, i) => {
+    const x = xOf(i);
+    let y = base;
+    for (const [r, n] of c.parts) {
+      if (!n) continue;
+      const h = yOf(n), on = (!f.role || f.role === r) && (!f.day || f.day === c.d) && (!f.team || f.team === c.t);
+      y -= h;
+      svg += `<g class="hit ${on ? "" : "dim"}" data-d="${c.d}" data-t="${c.t}" data-r="${r}">
+        <rect x="${x}" y="${y}" width="${colW - 8}" height="${h}" fill="${ROLE_COLOR[r]}" stroke="var(--surface)" stroke-width="1"/>
+        ${h >= 14 ? `<text x="${x + (colW - 8) / 2}" y="${y + h / 2 + 4}" text-anchor="middle" style="fill:#fff;font-weight:600">${n}</text>` : ""}</g>`;
+    }
+    svg += `<text x="${x + (colW - 8) / 2}" y="${y - 5}" text-anchor="middle" style="fill:var(--text);font-weight:600">${c.total}</text>
+      <text x="${x + (colW - 8) / 2}" y="${base + 14}" text-anchor="middle">${c.t === "attack" ? "Attack" : "Defend"}</text>`;
+  });
+  for (const [g, d] of [[0, "Saturday"], [1, "Sunday"]]) {
+    const x1 = xOf(g * 2), x2 = xOf(g * 2 + 1) + colW - 8;
+    svg += `<line x1="${x1}" x2="${x2}" y1="${base + 22}" y2="${base + 22}" stroke="var(--line)"/>
+      <text x="${(x1 + x2) / 2}" y="${base + 35}" text-anchor="middle" style="fill:var(--text);font-weight:600">${d}</text>`;
+  }
+  svg += `<line x1="${L - 6}" x2="${W - 4}" y1="${base}" y2="${base}" stroke="var(--line)"/>`;
+  const legend = ROLES.map(([r, label]) => `<span><b style="background:${ROLE_COLOR[r]}"></b>${label}</span>`).join("");
+  $("teamchart").innerHTML = `<div class="legend">${legend}</div><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-height:300px">${svg}</svg>`;
+  $("teamchart").querySelectorAll("[data-r]").forEach(g => g.onclick = () => {
+    const same = f.day === g.dataset.d && f.team === g.dataset.t && f.role === g.dataset.r;
+    setFilters(same ? {} : { day: g.dataset.d, team: g.dataset.t, role: g.dataset.r });
+  });
+}
 
 const openDays = { Saturday: false, Sunday: false };
 function renderAvail(players) {
