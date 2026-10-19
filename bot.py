@@ -146,6 +146,7 @@ def register_player(name, w1, w2, role, team, avail, jungle):
 firebase_admin.initialize_app(credentials.Certificate(str(HERE / "firebase-key.json")),
                               {"databaseURL": DATABASE_URL})
 
+LOGO = HERE / "assets" / "fateless-logo.png"
 INTRO_TITLE = "⚔️ GUILD WAR REGISTRATION"
 TEAM_NAMES = {"attack": "⚔️ Attack", "defend": "🛡️ Defend"}
 DAY_EMOJI = {"Saturday": "📅", "Sunday": "📆", "Sat & Sun": "🔥"}
@@ -181,6 +182,7 @@ def build_intro():
     embed.add_field(name="📅 Saturday", value=f"{bar(sat, DAY_MAX)}\n**{sat}** / {DAY_MAX}")
     embed.add_field(name="📆 Sunday", value=f"{bar(sun, DAY_MAX)}\n**{sun}** / {DAY_MAX}")
     embed.add_field(name="🪑 Reserve", value=f"​\n**{reserves}**")
+    embed.set_thumbnail(url="attachment://logo.png")
     embed.set_footer(text=f"Week of {week_key()} • Resets every Monday • Name = your server nickname")
     return embed
 
@@ -298,6 +300,8 @@ listening = False
 async def on_ready():
     global listening
     client.add_view(RegisterButton())
+    if client.user.avatar is None:  # use the guild logo as the bot's picture
+        await client.user.edit(avatar=LOGO.read_bytes())
     if not listening:
         listening = True
         db.reference("activity_auth").listen(handle_activity_login)
@@ -311,7 +315,8 @@ async def on_ready():
                if m.author == client.user and m.components]
         for m in old:  # replace earlier versions with one fresh message
             await m.delete()
-        msg = await channel.send(embed=build_intro(), view=RegisterButton())
+        msg = await channel.send(embed=build_intro(), view=RegisterButton(),
+                                 file=discord.File(LOGO, filename="logo.png"))
         intro_messages.append(msg)
     print(f"Logged in as {client.user} — Register button is ready")
 

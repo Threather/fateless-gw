@@ -20,7 +20,8 @@
   .label { font-size: 11px; line-height: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .muted { color: var(--muted); }
 
-  header { display: flex; align-items: baseline; gap: 12px; padding: 20px 0 16px; border-bottom: 1px solid var(--line); }
+  header { display: flex; align-items: center; gap: 12px; padding: 20px 0 16px; border-bottom: 1px solid var(--line); }
+  header .logo { width: 40px; height: 40px; border-radius: 50%; }
   header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
   header .muted { margin-left: auto; }
 
@@ -103,7 +104,7 @@
 </head>
 <body>
 <div class="wrap">
-  <header><h1>FATELESS GW</h1><span class="muted" id="week"></span><span class="muted" id="total"></span></header>
+  <header><img class="logo" src="logo.webp" alt=""><h1>FATELESS GW</h1><span class="muted" id="week"></span><span class="muted" id="total"></span></header>
 
 
   <section class="days" id="days"></section>
