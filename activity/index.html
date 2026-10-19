@@ -160,9 +160,8 @@ const HEALER_W = new Set(["Panacea Fan", "Soulshade Umbrella"]);
 const TANK_W = new Set(["Thundercry Blade", "Stormbreaker Spear"]);
 const ROLES = [["healer", "✚ Healer"], ["tank", "🛡 Tank"], ["dps", "🗡 DPS"]];
 const ROLE_COLOR = { healer: "#3ba55d", tank: "#f0883e", dps: "#4f8fe0" };
-// Healer weapon wins, then tank weapon, otherwise DPS
-const roleOf = p => [p.weapon1, p.weapon2].some(w => HEALER_W.has(w)) ? "healer"
-  : [p.weapon1, p.weapon2].some(w => TANK_W.has(w)) ? "tank" : "dps";
+// Role comes from the main weapon (Weapon 1); Weapon 2 is only a secondary
+const roleOf = p => HEALER_W.has(p.weapon1) ? "healer" : TANK_W.has(p.weapon1) ? "tank" : "dps";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 // Same person, different names (old website name -> Discord nickname). Add more as "old": "discord".
