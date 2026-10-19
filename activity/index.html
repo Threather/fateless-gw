@@ -119,7 +119,7 @@
       <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Role</th><th>Team</th><th>Day</th></tr></thead>
         <tbody id="roster"></tbody></table></div></div>
     <div class="card"><h2>Not signed up</h2>
-      <div class="sub">Registered since August but not this week · most recent first</div>
+      <div class="sub">Registered 2+ times, active since August, not signed up this week</div>
       <div class="missing" id="missing"></div>
       <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
   </section>
@@ -137,7 +137,7 @@
 
   <section class="grid">
     <div class="card"><h2>Reliability</h2>
-      <div class="sub">Last 12 weeks · ■ main ▢ reserve · click a player to filter</div>
+      <div class="sub">Last 12 weeks · players who registered 2+ times · click a player to filter</div>
       <div class="tablewrap"><table><thead><tr><th class="sort" data-s="name">Player</th><th>12 weeks</th>
         <th class="sort" data-s="rel">Rel.</th><th class="sort hide-m" data-s="streak">Streak</th></tr></thead>
         <tbody id="rel"></tbody></table></div></div>
@@ -256,7 +256,7 @@ function render() {
   const players = data[week] || [];
   const prevPlayers = data[weeks[wi - 1]] || [];
   const { people, last12 } = history(week);
-  const missing = Object.values(people).filter(p => !p.weeks[week] && p.last >= "2026-08-01").sort((a, b) => b.last.localeCompare(a.last) || b.rel - a.rel);
+  const missing = Object.values(people).filter(p => !p.weeks[week] && p.last >= "2026-08-01" && Object.keys(p.weeks).length > 1).sort((a, b) => b.last.localeCompare(a.last) || b.rel - a.rel);
 
   renderChips();
   renderKpis(players, prevPlayers, missing, wi);
@@ -380,7 +380,7 @@ function renderTrend(wi) {
 }
 
 function renderRel(people, last12) {
-  let list = Object.values(people).filter(p => p.strip.some(Boolean));
+  let list = Object.values(people).filter(p => p.strip.some(Boolean) && Object.keys(p.weeks).length > 1);
   list.sort(relSort === "name" ? (a, b) => a.name.localeCompare(b.name)
     : relSort === "streak" ? (a, b) => b.streak - a.streak || b.rel - a.rel : (a, b) => b.rel - a.rel || b.streak - a.streak);
   $("rel").innerHTML = list.map(p => `<tr class="${f.player === key(p.name) ? "sel" : ""}" data-p="${esc(key(p.name))}">
