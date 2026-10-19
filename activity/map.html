@@ -62,6 +62,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .player-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg-input);cursor:grab;font-size:11px;color:var(--text1);transition:all .15s;user-select:none;}
 .player-chip:hover{border-color:var(--border-hi);background:var(--bg-hover)}
 .player-chip.placed{opacity:.4;cursor:default}
+.player-chip.armed,.obj-item.armed{outline:2px solid #d4a84a;outline-offset:1px;opacity:1}
 .role-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .role-dot.heal{background:var(--heal)}.role-dot.tank{background:var(--tank)}.role-dot.dps{background:var(--dps)}
 .day-tabs{display:flex;gap:6px;margin-bottom:.75rem}
@@ -582,6 +583,7 @@ canvas.addEventListener('mouseleave', () => { isDrawing = false; });
 window.objDragStart = function(e) {
   dragSrc = { type:'obj', src: e.currentTarget.dataset.src, label: e.currentTarget.dataset.label };
   e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', e.currentTarget.dataset.label);
 };
 
 // ── DROP ON VIEWPORT ──
@@ -594,7 +596,31 @@ window.onDrop = function(e) {
   if (dragSrc.type === 'obj')    placeObj(dragSrc.src, dragSrc.label, wx, wy);
   if (dragSrc.type === 'player') placePly(dragSrc.player, wx, wy);
   dragSrc = null;
+  disarm();
 };
+
+// ── TAP TO PLACE (dragging inside Discord's frame is unreliable) ──
+// Tap a player or objective in the sidebar, then tap the map where it goes.
+let armedEl = null;
+function arm(el, src) {
+  const same = armedEl === el;
+  disarm();
+  if (same) return;
+  dragSrc = src; armedEl = el;
+  el.classList.add('armed');
+  showToast('Now tap the map to place ' + (src.type === 'player' ? src.player.name : src.label), true);
+}
+function disarm() {
+  if (armedEl) armedEl.classList.remove('armed');
+  armedEl = null;
+}
+viewport.addEventListener('click', e => {
+  if (!armedEl || !dragSrc) return;
+  if (e.target.closest('.marker, .pmarker')) return;
+  window.onDrop(e);
+});
+document.querySelectorAll('.obj-item').forEach(item => item.addEventListener('click', () =>
+  arm(item, { type: 'obj', src: item.dataset.src, label: item.dataset.label })));
 
 // ── PLACE OBJECTIVE ──
 function placeObj(src, label, wx, wy) {
@@ -873,7 +899,9 @@ function renderPlayerSidebar() {
       chip.addEventListener('dragstart', e => {
         dragSrc = { type: 'player', player: p };
         e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('text/plain', name);
       });
+      chip.addEventListener('click', () => arm(chip, { type: 'player', player: p }));
     });
   });
 }
