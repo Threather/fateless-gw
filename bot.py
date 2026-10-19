@@ -54,7 +54,8 @@ def handle_activity_login(event):
         try:
             tok = requests.post(f"{API}/oauth2/token", timeout=15, data={
                 "client_id": CLIENT_ID, "client_secret": read_env("DISCORD_CLIENT_SECRET"),
-                "grant_type": "authorization_code", "code": req["code"]}).json()
+                "grant_type": "authorization_code", "code": req["code"],
+                "redirect_uri": "https://127.0.0.1"}).json()
             headers = {"Authorization": f"Bearer {tok['access_token']}"}
             member = requests.get(f"{API}/users/@me/guilds/{req.get('guild')}/member",
                                   headers=headers, timeout=15).json()

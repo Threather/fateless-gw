@@ -177,7 +177,7 @@ window.parent.postMessage([0, { v: 1, encoding: "json", client_id: CLIENT_ID,
 let me = null;
 async function signIn() {
   await ready;
-  const { code } = await rpc("AUTHORIZE", { client_id: CLIENT_ID, response_type: "code", state: "",
+  const { code } = await rpc("AUTHORIZE", { client_id: CLIENT_ID, response_type: "code", state: "", redirect_uri: "https://127.0.0.1",
     prompt: "none", scope: ["identify", "guilds.members.read"] });
   const id = crypto.randomUUID();
   await fetch(`${DB}/activity_auth/${id}.json`, { method: "PUT",
