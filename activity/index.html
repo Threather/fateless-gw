@@ -54,13 +54,6 @@
   .meter i.low { background: var(--red); }
   .kpi svg { width: 100%; height: 26px; display: block; }
 
-  /* Gaps */
-  .gaps { display: flex; flex-wrap: wrap; gap: 8px; }
-  .gap { display: flex; align-items: center; gap: 8px; background: var(--raised); border-left: 3px solid var(--red);
-    border-radius: 4px; padding: 6px 10px; text-align: left; }
-  .gap.ok { border-left-color: var(--gold); }
-  .gap:hover { background: var(--line); }
-
   /* Charts */
   svg text { fill: var(--muted); font: 11px system-ui, sans-serif; }
   .scroll-x { overflow-x: auto; }
@@ -111,9 +104,6 @@
   </div>
 
   <section class="grid g4" id="kpis"></section>
-
-  <section class="card"><h2>Gaps this week</h2><div class="sub">Things to fix before war — click one to filter</div>
-    <div class="gaps" id="gaps"></div></section>
 
   <section class="grid g2">
     <div class="card"><h2>Composition by weapon family</h2>
@@ -253,7 +243,6 @@ function render() {
 
   renderChips();
   renderKpis(players, prevPlayers, missing, wi);
-  renderGaps(players, missing);
   renderComp(players, wi);
   renderMissing(missing);
   renderTrend(wi);
@@ -302,27 +291,6 @@ function renderKpis(players, prev, missing, wi) {
       <div class="sub" style="margin:8px 0 0">${missing.slice(0, 3).map(p => esc(p.name)).join(", ") || "Everyone's in"}${missing.length > 3 ? "…" : ""}</div></div>`;
   $("kpis").querySelectorAll("[data-d]").forEach(t => t.onclick = () => toggle("day", t.dataset.d));
   $("kmiss").onclick = () => $("missing").scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
-function renderGaps(players, missing) {
-  const main = players.filter(p => !p.isReserve), gaps = [];
-  for (const d of ["Saturday", "Sunday"]) {
-    const dayP = main.filter(p => match.day(p, d));
-    if (dayP.length < LOW_DAY) gaps.push([`${d}: only ${dayP.length}/${DAY_MAX} main`, { day: d }]);
-    for (const t of ["attack", "defend"]) {
-      const h = dayP.filter(p => p.team === t && fams(p).some(x => HEAL.has(x))).length;
-      if (h < MIN_HEALERS) gaps.push([`${d.slice(0, 3)} ${t === "attack" ? "Attack" : "Defend"}: ${h} healer${h === 1 ? "" : "s"} (need ${MIN_HEALERS})`,
-        { day: d, team: t }]);
-    }
-  }
-  if (missing.length) gaps.push([`${missing.length} regular${missing.length === 1 ? "" : "s"} not signed up`, null]);
-  $("gaps").innerHTML = gaps.length
-    ? gaps.map(([t], i) => `<button class="gap" data-i="${i}">${esc(t)}</button>`).join("")
-    : `<div class="gap ok">No gaps — both days look ready</div>`;
-  $("gaps").querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
-    const g = gaps[b.dataset.i][1];
-    g ? setFilters(g) : $("missing").scrollIntoView({ behavior: "smooth", block: "center" });
-  });
 }
 
 function renderComp(players, wi) {
