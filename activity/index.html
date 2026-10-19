@@ -6,8 +6,8 @@
 <title>Fateless GW</title>
 <style>
   :root {
-    --bg: #111214; --surface: #1a1b1e; --line: #26282c;
-    --text: #e6e6e6; --muted: #8a8d93; --faint: #55585e;
+    --bg: #2b2d31; --surface: #35373c; --line: #3f4147;
+    --text: #f2f3f5; --muted: #b5bac1; --faint: #80848e;
     --accent: #d4a84a; --accent-weak: rgba(212, 168, 74, .14);
     --danger: #e5484d;
   }
@@ -20,7 +20,7 @@
   .label { font-size: 11px; line-height: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .muted { color: var(--muted); }
 
-  header { display: flex; align-items: baseline; gap: 12px; padding: 20px 0 16px; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 20px 0 16px; border-bottom: 1px solid var(--line); }
   header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
   header .muted { margin-left: auto; }
 
@@ -105,7 +105,6 @@
 <div class="wrap">
   <header><h1>FATELESS GW</h1><span class="muted" id="week"></span><span class="muted" id="total"></span></header>
 
-  <section id="reg"><div class="muted">Signing in…</div></section>
 
   <section class="days" id="days"></section>
 
@@ -173,23 +172,7 @@ window.addEventListener("message", ({ data }) => {
 window.parent.postMessage([0, { v: 1, encoding: "json", client_id: CLIENT_ID,
   frame_id: params.get("frame_id") }], "*");
 
-/* Who is this? The bot swaps the OAuth code for the member's server nickname. */
 let me = null;
-async function signIn() {
-  await ready;
-  const { code } = await rpc("AUTHORIZE", { client_id: CLIENT_ID, response_type: "code", state: "",
-    prompt: "none", scope: ["identify", "guilds.members.read"] });
-  const id = crypto.randomUUID();
-  await fetch(`${DB}/activity_auth/${id}.json`, { method: "PUT",
-    body: JSON.stringify({ code, guild: params.get("guild_id"), at: Date.now() }) });
-  for (let i = 0; i < 40; i++) {
-    await new Promise(r => setTimeout(r, 500));
-    const r = await (await fetch(`${DB}/activity_auth/${id}.json`)).json();
-    if (r && r.name) return r;
-    if (r && r.error) throw new Error(r.error);
-  }
-  throw new Error("Bot did not answer — is it running?");
-}
 
 /* ---------- Data + filters ---------- */
 let players = [];
@@ -270,94 +253,12 @@ function render() {
       <td class="col muted">${esc(day)}</td></tr>`;
   }).join("") || `<tr><td colspan="4" class="empty">${players.length ? "No one matches these filters" : "No registrations yet"}</td></tr>`;
 
-  renderReg();
-}
-
-/* ---------- Register bar ---------- */
-let editing = false, draft = { weapon1: "", weapon2: "", team: null, avail: null }, error = "";
-
-function renderReg() {
-  if (!me) return;
-  const mine = players.find(isMe);
-  const reg = $("reg");
-  if (mine && !editing) {
-    reg.innerHTML = `<div class="status"><span class="ok">✓</span><span>You're in · ${esc(mine.weapon1)} / ${esc(mine.weapon2)}
-      · ${TEAM[mine.team] || "—"} · ${esc(mine.avail)}${mine.isReserve ? " · reserve" : ""}</span>
-      <button class="link" id="edit">Edit</button></div>`;
-    $("edit").onclick = () => { editing = true; draft = { ...mine }; renderReg(); };
-    return;
-  }
-  if (reg.querySelector(".form")) return syncForm();  // keep focus while the list refreshes
-  const opts = [...WEAPONS].sort().map(w => `<option value="${w}">`).join("");
-  reg.innerHTML = `<div class="form">
-      <span class="who">${me.avatar ? `<img src="${esc(me.avatar)}" alt="">` : ""}${esc(me.name)}</span>
-      <datalist id="wlist">${opts}</datalist>
-      <input class="wpick" id="w1" list="wlist" placeholder="Weapon 1 — type to search" autocomplete="off">
-      <input class="wpick" id="w2" list="wlist" placeholder="Weapon 2 — type to search" autocomplete="off">
-      <span class="seg" data-k="team"><button data-v="attack">Attack</button><button data-v="defend">Defend</button></span>
-      <span class="seg" data-k="avail"><button data-v="Saturday">Sat</button><button data-v="Sunday">Sun</button><button data-v="Sat & Sun">Both</button></span>
-      <button class="go" id="go">${editing ? "Save" : "Confirm"}</button>
-    </div><div class="msg" id="msg"></div>`;
-  $("w1").value = draft.weapon1; $("w2").value = draft.weapon2;
-  const pick = k => e => {
-    const hit = WEAPONS.find(w => w.toLowerCase() === e.target.value.trim().toLowerCase());
-    draft[k] = hit || "";
-    if (hit && e.type === "change") e.target.value = hit;
-    syncForm();
-  };
-  for (const [id, k] of [["w1", "weapon1"], ["w2", "weapon2"]]) $(id).oninput = $(id).onchange = pick(k);
-  reg.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
-    draft[b.parentNode.dataset.k] = b.dataset.v; syncForm(); });
-  $("go").onclick = submit;
-  syncForm();
-}
-
-function syncForm() {
-  const main = players.filter(p => !p.isReserve && !isMe(p));
-  const full = { Saturday: main.filter(sat).length >= DAY_MAX, Sunday: main.filter(sun).length >= DAY_MAX };
-  full["Sat & Sun"] = full.Saturday && full.Sunday;
-  $("reg").querySelectorAll(".seg button").forEach(b => {
-    const k = b.parentNode.dataset.k;
-    b.classList.toggle("on", draft[k] === b.dataset.v);
-    if (k === "avail") b.innerHTML = b.textContent.split(" ")[0] + (full[b.dataset.v] ? ` <span class="full">full → reserve</span>` : "");
-  });
-  $("go").disabled = !(draft.weapon1 && draft.weapon2 && draft.team && draft.avail);
-  $("msg").textContent = error;
-}
-
-async function submit() {
-  error = "";
-  const { weapon1, weapon2, team, avail } = draft;
-  if (weapon1 === weapon2) { error = "Pick two different weapons."; return syncForm(); }
-  await load();
-  const mine = players.find(isMe);
-  if (mine && !editing) { error = "You're already registered."; return syncForm(); }
-  const main = players.filter(p => !p.isReserve && p !== mine);
-  const s = main.filter(sat).length, u = main.filter(sun).length;
-  const isReserve = (avail === "Saturday" && s >= DAY_MAX) || (avail === "Sunday" && u >= DAY_MAX) ||
-    (avail === "Sat & Sun" && s >= DAY_MAX && u >= DAY_MAX);
-  if (isReserve && players.filter(p => p.isReserve && p !== mine).length >= RESERVE_MAX) {
-    error = "All slots including reserve are full."; return syncForm(); }
-  $("go").disabled = true;
-  const data = { weapon1, weapon2, team, avail, isReserve };
-  try {
-    const r = mine
-      ? await fetch(`${REGS}/${mine.key}.json`, { method: "PATCH", body: JSON.stringify(data) })
-      : await fetch(`${REGS}.json`, { method: "POST", body: JSON.stringify({ ...data, name: me.name, role: null,
-          jungle: false, jungleSide: null, registeredAt: Date.now() }) });
-    if (!r.ok) throw 0;
-    editing = false;
-    $("reg").innerHTML = "";
-    await load();
-  } catch { error = "Couldn't save — try again."; syncForm(); }
 }
 
 /* ---------- Start ---------- */
 if (innerWidth <= 640) $("wbox").open = false;
 load();
 setInterval(load, 5000);
-signIn().then(user => { me = user; render(); })
-  .catch(e => { $("reg").innerHTML = `<div class="msg">Sign-in failed: ${esc(e.message || "please reopen the dashboard")}</div>`; });
 </script>
 </body>
 </html>
