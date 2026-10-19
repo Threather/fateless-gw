@@ -2,123 +2,129 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fateless GW Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fateless GW</title>
 <style>
   :root {
-    --bg: #0d0f14; --panel: #161a22; --panel2: #1d222c; --line: #2a303c;
-    --text: #e8e6e1; --muted: #8b909c; --gold: #d4a24c; --gold2: #f0c674;
-    --atk: #e0564f; --def: #4f8fe0; --sat: #9b6bea; --sun: #3fbf9b; --res: #e6a23c;
+    --bg: #111214; --surface: #1a1b1e; --line: #26282c;
+    --text: #e6e6e6; --muted: #8a8d93; --faint: #55585e;
+    --accent: #d4a84a; --accent-weak: rgba(212, 168, 74, .14);
+    --danger: #e5484d;
   }
-  * { box-sizing: border-box; margin: 0; }
-  body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
-  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line);
-    background: linear-gradient(90deg, #1a140a, var(--bg) 60%); }
-  header h1 { font-size: 18px; letter-spacing: .08em; color: var(--gold2); }
-  header .week { color: var(--muted); font-size: 12px; }
-  header .live { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  header .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fbf6b; box-shadow: 0 0 8px #3fbf6b; }
-  main { display: grid; grid-template-columns: 1fr 320px; gap: 14px; padding: 14px 20px; }
-  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 12px; } }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 10px;
-    display: flex; justify-content: space-between; }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
-  @media (max-width: 600px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
-  .kpi { cursor: pointer; transition: .15s; border-left: 3px solid var(--c); }
-  .kpi:hover { background: var(--panel2); }
-  .kpi.on { background: var(--panel2); outline: 1px solid var(--c); }
-  .kpi .v { font-size: 28px; font-weight: 700; }
-  .kpi .v small { font-size: 14px; color: var(--muted); font-weight: 400; }
-  .kpi .meter { height: 4px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .kpi .meter i { display: block; height: 100%; background: var(--c); }
-  .charts { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 14px; }
-  @media (max-width: 600px) { .charts { grid-template-columns: 1fr; } }
-  .bars .row { display: grid; grid-template-columns: 150px 1fr 26px; align-items: center; gap: 8px; padding: 3px 4px;
-    border-radius: 4px; cursor: pointer; font-size: 12px; }
-  .bars .row:hover, .bars .row.on { background: var(--panel2); }
-  .bars .row.dim { opacity: .35; }
-  .bars .track { height: 12px; background: var(--line); border-radius: 3px; overflow: hidden; }
-  .bars .track i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); }
-  .bars .n { text-align: right; color: var(--muted); }
-  .donut { display: flex; align-items: center; gap: 16px; }
-  .donut svg { width: 130px; height: 130px; flex: none; }
-  .donut path { cursor: pointer; transition: opacity .15s; }
-  .legend div { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
-  .legend div:hover, .legend div.on { background: var(--panel2); }
-  .legend b { width: 10px; height: 10px; border-radius: 2px; }
-  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 3px 10px;
-    font-size: 12px; cursor: pointer; }
-  .chip.x { border-color: var(--gold); color: var(--gold2); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em;
-    padding: 6px 8px; border-bottom: 1px solid var(--line); }
-  td { padding: 7px 8px; border-bottom: 1px solid #1f242e; }
-  tr.me td { background: #2a2110; }
-  .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; }
-  .tag.attack { background: #3a1c1b; color: #ff8a84; } .tag.defend { background: #1b2a3e; color: #8ab8ff; }
-  .tag.res { background: #3a2b12; color: var(--res); }
-  .scroll { max-height: 360px; overflow: auto; }
-  aside .panel { position: sticky; top: 14px; }
-  .who { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .who img { width: 40px; height: 40px; border-radius: 50%; background: var(--line); }
-  .who .n { font-weight: 600; font-size: 15px; }
-  label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
-  select { width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
-    padding: 9px; font-size: 14px; }
-  .seg { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 6px; }
-  .seg button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 9px 4px;
-    cursor: pointer; font-size: 13px; }
-  .seg button.on { border-color: var(--gold); background: #2a2110; color: var(--gold2); }
-  .go { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
-    background: linear-gradient(90deg, var(--gold), var(--gold2)); color: #1a1205; }
-  .go:disabled { opacity: .5; cursor: default; }
-  .msg { margin-top: 10px; font-size: 13px; min-height: 18px; }
-  .msg.err { color: #ff8a84; } .msg.ok { color: #7fe0a4; }
-  .done { text-align: center; padding: 18px 0; }
-  .done .big { font-size: 34px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--text); min-height: 100dvh; }
+  body { font: 13px/20px system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
+    padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+  button, select { font: inherit; color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .label { font-size: 11px; line-height: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .muted { color: var(--muted); }
+
+  header { display: flex; align-items: baseline; gap: 12px; padding: 20px 0 16px; }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+  header .muted { margin-left: auto; }
+
+  /* Register bar */
+  #reg { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .who { display: flex; align-items: center; gap: 8px; margin-right: 8px; font-weight: 600; }
+  .who img { width: 24px; height: 24px; border-radius: 50%; background: var(--line); }
+  select { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; height: 36px; padding: 0 8px;
+    min-width: 170px; font-size: 16px; }
+  @media (min-width: 640px) { select { font-size: 13px; } }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: 0; height: 34px; padding: 0 12px; cursor: pointer; color: var(--muted); }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent-weak); color: var(--accent); }
+  .seg button .full { color: var(--danger); font-size: 11px; }
+  .go { margin-left: auto; height: 36px; padding: 0 20px; border: 0; border-radius: 6px; background: var(--accent);
+    color: #111; font-weight: 600; cursor: pointer; }
+  .go:disabled { background: var(--line); color: var(--faint); cursor: default; }
+  .status { display: flex; align-items: center; gap: 8px; }
+  .status .ok { color: var(--accent); }
+  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; margin-left: auto; }
+  .msg { color: var(--danger); margin-top: 8px; }
+  .msg:empty { display: none; }
+
+  /* Day strip */
+  .days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 24px 0; }
+  .day { background: none; border: 0; text-align: left; cursor: pointer; padding: 8px; margin: -8px; border-radius: 6px; }
+  .day:hover { background: var(--surface); }
+  .day.on { background: var(--accent-weak); }
+  .day.on .label { color: var(--accent); }
+  .day .n { font-size: 28px; line-height: 32px; font-weight: 600; margin: 4px 0 8px; }
+  .day .n small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .bar { height: 2px; background: var(--line); }
+  .bar i { display: block; height: 100%; background: var(--muted); }
+  .bar i.hot { background: var(--accent); }
+  .bar i.full { background: var(--danger); }
+
+  /* Weapons + roster */
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+  .head { display: flex; align-items: center; gap: 8px; height: 36px; border-bottom: 1px solid var(--line); }
+  .head .seg { margin-left: auto; }
+  .head .seg button { height: 28px; font-size: 12px; }
+  .w { display: grid; grid-template-columns: 1fr 64px 24px; align-items: center; gap: 12px; width: 100%; height: 32px;
+    padding: 0 8px; background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left; }
+  .w:hover { background: var(--surface); }
+  .w.on { background: var(--accent-weak); color: var(--accent); }
+  .w .bar { height: 4px; border-radius: 2px; }
+  .w.dim .bar i { opacity: .35; }
+  .w .c { text-align: right; color: var(--muted); }
+  .unused { color: var(--faint); padding: 8px; }
+  details summary { list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; }
+  .chips:empty { display: none; }
+  .chip { background: var(--accent-weak); color: var(--accent); border: 0; border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-weight: 400; }
+  td, th { height: 36px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+  tr.me td:first-child { box-shadow: inset 2px 0 var(--accent); }
+  .r2 { display: none; }
+  .empty { color: var(--faint); padding: 16px 8px; }
+
+  @media (max-width: 640px) {
+    .days { gap: 16px; }
+    .day .n { font-size: 22px; line-height: 28px; }
+    .grid { grid-template-columns: 1fr; }
+    .form select { flex: 1 1 100%; }
+    .form .seg { flex: 1; }
+    .form .seg button { flex: 1; height: 40px; }
+    .go { flex: 1 1 100%; height: 44px; margin: 0; }
+    .head .seg button { height: 32px; }
+    thead, .col { display: none; }
+    .r2 { display: block; color: var(--muted); }
+    td { height: auto; padding: 8px; }
+  }
+  @media (min-width: 641px) { details[open] > summary, details > summary { pointer-events: none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>⚔ FATELESS · GUILD WAR</h1>
-  <span class="week" id="week"></span>
-  <span class="live"><span class="dot"></span><span id="status">Connecting…</span></span>
-</header>
+<div class="wrap">
+  <header><h1>FATELESS GW</h1><span class="muted" id="week"></span><span class="muted" id="total"></span></header>
 
-<main>
-  <section>
-    <div class="kpis" id="kpis"></div>
-    <div class="charts">
-      <div class="panel"><h2>Weapons <span id="wcount"></span></h2><div class="bars" id="bars"></div></div>
-      <div class="panel"><h2>Team split</h2><div class="donut" id="donut"></div></div>
-    </div>
-    <div class="panel">
-      <h2>Roster <span class="filters" id="filters"></span></h2>
-      <div class="scroll"><table>
-        <thead><tr><th>#</th><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
+  <section id="reg"><div class="muted">Signing in…</div></section>
+
+  <section class="days" id="days"></section>
+
+  <section class="grid">
+    <details id="wbox" open>
+      <summary class="head label">Weapons <span id="wsel"></span></summary>
+      <div id="weapons"></div>
+    </details>
+    <div>
+      <div class="head"><span class="label">Roster</span>
+        <span class="seg" id="roles"></span></div>
+      <div class="chips" id="chips"></div>
+      <table>
+        <thead><tr class="label"><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
         <tbody id="rows"></tbody>
-      </table></div>
+      </table>
     </div>
   </section>
-
-  <aside><div class="panel" id="form">
-    <h2>Register</h2>
-    <div class="who"><img id="avatar" alt=""><div><div class="n" id="me">Signing in…</div>
-      <div class="week">Name from your server nickname</div></div></div>
-    <div id="fields">
-      <label>Weapon 1</label><select id="w1"></select>
-      <label>Weapon 2</label><select id="w2"></select>
-      <label>Team</label><div class="seg" style="--n:2" data-k="team">
-        <button data-v="attack">⚔ Attack</button><button data-v="defend">🛡 Defend</button></div>
-      <label>Day</label><div class="seg" style="--n:3" data-k="avail">
-        <button data-v="Saturday">Sat</button><button data-v="Sunday">Sun</button><button data-v="Sat & Sun">Both</button></div>
-      <button class="go" id="go" disabled>Confirm Registration</button>
-      <div class="msg" id="msg"></div>
-    </div>
-  </div></aside>
-</main>
+</div>
 
 <script>
 const CLIENT_ID = "1561639617776590889";
@@ -131,6 +137,7 @@ const WEAPONS = [
   "Snowparting Blade","Phalanxbane Blade","Everspring Umbrella","Unfettered Rope Dart",
   "Heavenwill Gauntlets","Skygrasp Rope Dart"
 ];
+const TEAM = { attack: "Attack", defend: "Defend" };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -184,162 +191,167 @@ async function signIn() {
   throw new Error("Bot did not answer — is it running?");
 }
 
-/* ---------- Data ---------- */
+/* ---------- Data + filters ---------- */
 let players = [];
-let filter = { avail: null, team: null, weapon: null, reserve: null };
+const filter = { day: null, team: null, weapon: null };  // day: Saturday | Sunday | reserve
 
 async function load() {
   try {
     const val = await (await fetch(`${REGS}.json`)).json();
-    players = Object.values(val || {}).sort((a, b) => a.registeredAt - b.registeredAt);
-    $("status").textContent = "Live · " + players.length + " registered";
+    players = Object.entries(val || {}).map(([key, p]) => ({ key, ...p }))
+      .sort((a, b) => a.registeredAt - b.registeredAt);
     render();
-  } catch { $("status").textContent = "Offline"; }
+  } catch { $("total").textContent = "· offline"; }
 }
 
 const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
 const sun = p => p.avail === "Sunday" || p.avail === "Sat & Sun";
-function visible() {
-  return players.filter(p =>
-    (!filter.avail || (filter.avail === "Saturday" ? sat(p) : sun(p))) &&
-    (!filter.team || p.team === filter.team) &&
-    (!filter.weapon || p.weapon1 === filter.weapon || p.weapon2 === filter.weapon) &&
-    (filter.reserve === null || !!p.isReserve === filter.reserve));
-}
+const isMe = p => me && p.name.toLowerCase() === me.name.toLowerCase();
+const match = {
+  day: (p, v) => v === "reserve" ? p.isReserve : !p.isReserve && (v === "Saturday" ? sat(p) : sun(p)),
+  team: (p, v) => p.team === v,
+  weapon: (p, v) => p.weapon1 === v || p.weapon2 === v,
+};
+// Every visual is filtered by the *other* dimensions, never by itself (Power BI cross-filter).
+const filtered = (except) => players.filter(p =>
+  Object.entries(filter).every(([k, v]) => k === except || v === null || match[k](p, v)));
 function toggle(k, v) { filter[k] = filter[k] === v ? null : v; render(); }
+addEventListener("keydown", e => { if (e.key === "Escape") { for (const k in filter) filter[k] = null; render(); } });
 
 function render() {
-  const main = players.filter(p => !p.isReserve);
-  const kpis = [
-    ["Saturday", main.filter(sat).length, DAY_MAX, "--sat", () => toggle("avail", "Saturday"), filter.avail === "Saturday"],
-    ["Sunday", main.filter(sun).length, DAY_MAX, "--sun", () => toggle("avail", "Sunday"), filter.avail === "Sunday"],
-    ["Reserve", players.length - main.length, RESERVE_MAX, "--res", () => toggle("reserve", true), filter.reserve === true],
-    ["Total", players.length, null, "--gold", () => { filter = { avail: null, team: null, weapon: null, reserve: null }; render(); }, false],
-  ];
-  $("kpis").innerHTML = "";
-  for (const [name, n, max, c, onclick, on] of kpis) {
-    const d = document.createElement("div");
-    d.className = "panel kpi" + (on ? " on" : "");
-    d.style.setProperty("--c", `var(${c})`);
-    d.innerHTML = `<h2>${name}</h2><div class="v">${n}${max ? ` <small>/ ${max}</small>` : ""}</div>` +
-      (max ? `<div class="meter"><i style="width:${Math.min(100, n / max * 100)}%"></i></div>` : "");
-    d.onclick = onclick;
-    $("kpis").append(d);
-  }
+  $("total").textContent = "· " + players.length + " registered";
 
-  const vis = visible();
-  // Weapons bar chart (cross-filters by the other filters)
+  // Day strip — the KPIs and the day filter in one
+  const forDays = filtered("day"), main = forDays.filter(p => !p.isReserve);
+  const cells = [["Saturday", main.filter(sat).length, DAY_MAX], ["Sunday", main.filter(sun).length, DAY_MAX],
+                 ["reserve", forDays.length - main.length, RESERVE_MAX]];
+  $("days").innerHTML = cells.map(([d, n, max]) => {
+    const pct = n / max, cls = pct >= 1 ? "full" : pct >= .9 ? "hot" : "";
+    return `<button class="day ${filter.day === d ? "on" : ""}" data-d="${d}">
+      <div class="label">${d === "reserve" ? "Reserve" : d}</div>
+      <div class="n">${n} <small>/ ${max}</small></div>
+      <div class="bar"><i class="${cls}" style="width:${Math.min(100, pct * 100)}%"></i></div></button>`;
+  }).join("");
+  $("days").querySelectorAll(".day").forEach(b => b.onclick = () => toggle("day", b.dataset.d));
+
+  // Weapons — only the ones in use
   const wc = {};
-  vis.forEach(p => [p.weapon1, p.weapon2].forEach(w => w && (wc[w] = (wc[w] || 0) + 1)));
-  const top = Object.entries(wc).sort((a, b) => b[1] - a[1]);
-  const max = top[0]?.[1] || 1;
-  $("wcount").textContent = top.length ? top.length + " used" : "";
-  $("bars").innerHTML = top.length ? "" : `<div class="week">No registrations yet</div>`;
-  for (const [w, n] of top) {
-    const r = document.createElement("div");
-    r.className = "row" + (filter.weapon === w ? " on" : filter.weapon ? " dim" : "");
-    r.innerHTML = `<span>${esc(w)}</span><span class="track"><i style="width:${n / max * 100}%"></i></span><span class="n">${n}</span>`;
-    r.onclick = () => toggle("weapon", w);
-    $("bars").append(r);
-  }
+  filtered("weapon").forEach(p => [p.weapon1, p.weapon2].forEach(w => w && (wc[w] = (wc[w] || 0) + 1)));
+  const used = Object.entries(wc).sort((a, b) => b[1] - a[1]), max = used[0]?.[1] || 1;
+  $("weapons").innerHTML = used.map(([w, n]) => `<button class="w ${filter.weapon === w ? "on" : filter.weapon ? "dim" : ""}" data-w="${esc(w)}">
+      <span>${esc(w)}</span><span class="bar"><i style="width:${n / max * 100}%"></i></span><span class="c">${n}</span></button>`).join("")
+    + (used.length < WEAPONS.length ? `<div class="unused">+${WEAPONS.length - used.length} unused</div>` : "");
+  $("weapons").querySelectorAll(".w").forEach(b => b.onclick = () => toggle("weapon", b.dataset.w));
+  $("wsel").textContent = filter.weapon ? "· " + filter.weapon : "";
 
-  // Team donut
-  const atk = vis.filter(p => p.team === "attack").length, def = vis.filter(p => p.team === "defend").length;
-  const total = atk + def || 1, a = atk / total * Math.PI * 2;
-  const arc = (s, e) => {
-    if (e - s >= Math.PI * 2 - 1e-6) e = s + Math.PI * 2 - 1e-4;
-    const p = t => [60 + 50 * Math.sin(t), 60 - 50 * Math.cos(t)];
-    const [x1, y1] = p(s), [x2, y2] = p(e);
-    return `M${x1} ${y1}A50 50 0 ${e - s > Math.PI ? 1 : 0} 1 ${x2} ${y2}`;
-  };
-  const seg = (team, path, color) => (team === "attack" ? atk : def) ?
-    `<path d="${path}" stroke="${color}" stroke-width="18" fill="none" opacity="${filter.team && filter.team !== team ? .25 : 1}" data-t="${team}"/>` : "";
-  $("donut").innerHTML = `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" stroke="var(--line)" stroke-width="18" fill="none"/>
-      ${seg("attack", arc(0, a), "var(--atk)")}${seg("defend", arc(a, Math.PI * 2), "var(--def)")}
-      <text x="60" y="66" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">${atk + def}</text></svg>
-    <div class="legend">
-      <div data-t="attack" class="${filter.team === "attack" ? "on" : ""}"><b style="background:var(--atk)"></b>Attack · ${atk}</div>
-      <div data-t="defend" class="${filter.team === "defend" ? "on" : ""}"><b style="background:var(--def)"></b>Defend · ${def}</div></div>`;
-  $("donut").querySelectorAll("[data-t]").forEach(el => el.onclick = () => toggle("team", el.dataset.t));
+  // Team segmented filter
+  const forTeam = filtered("team");
+  const tc = t => forTeam.filter(p => p.team === t).length;
+  $("roles").innerHTML = [[null, "All"], ["attack", "Attack " + tc("attack")], ["defend", "Defend " + tc("defend")]]
+    .map(([t, l]) => `<button class="${filter.team === t ? "on" : ""}" data-t="${t ?? ""}">${l}</button>`).join("");
+  $("roles").querySelectorAll("button").forEach(b => b.onclick = () => {
+    filter.team = b.dataset.t || null; render(); });
 
   // Active filter chips
-  const labels = { avail: v => v, team: v => v === "attack" ? "Attack" : "Defend", weapon: v => v, reserve: () => "Reserve" };
-  $("filters").innerHTML = "";
-  for (const k in filter) if (filter[k] !== null) {
-    const c = document.createElement("button");
-    c.className = "chip x"; c.textContent = labels[k](filter[k]) + " ✕";
-    c.onclick = () => toggle(k, filter[k]);
-    $("filters").append(c);
-  }
+  const names = { day: v => v === "reserve" ? "Reserve" : v, team: v => TEAM[v], weapon: v => v };
+  const active = Object.entries(filter).filter(([, v]) => v !== null);
+  $("chips").innerHTML = active.map(([k, v]) => `<button class="chip" data-k="${k}">${esc(names[k](v))} ×</button>`).join("")
+    + (active.length ? `<button class="link" id="clear">Clear</button>` : "");
+  $("chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter[b.dataset.k] = null; render(); });
+  if (active.length) $("clear").onclick = () => { for (const k in filter) filter[k] = null; render(); };
 
-  // Roster table
-  $("rows").innerHTML = vis.map((p, i) => `<tr class="${me && p.name.toLowerCase() === me.name.toLowerCase() ? "me" : ""}">
-    <td>${i + 1}</td><td>${esc(p.name)} ${p.isReserve ? '<span class="tag res">reserve</span>' : ""}</td>
-    <td>${esc(p.weapon1)} / ${esc(p.weapon2)}</td>
-    <td>${p.team ? `<span class="tag ${p.team}">${p.team === "attack" ? "Attack" : "Defend"}</span>` : "—"}</td>
-    <td>${esc(p.avail)}</td></tr>`).join("") || `<tr><td colspan="5" class="week">Nobody matches these filters</td></tr>`;
+  // Roster — you first
+  const rows = filtered(null).sort((a, b) => isMe(b) - isMe(a));
+  $("rows").innerHTML = rows.map(p => {
+    const team = TEAM[p.team] || "—", day = p.isReserve ? p.avail + " · reserve" : p.avail;
+    return `<tr class="${isMe(p) ? "me" : ""}"><td>${esc(p.name)}
+      <div class="r2">${esc(p.weapon1)} / ${esc(p.weapon2)} · ${team} · ${esc(day)}</div></td>
+      <td class="col">${esc(p.weapon1)} / ${esc(p.weapon2)}</td><td class="col muted">${team}</td>
+      <td class="col muted">${esc(day)}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" class="empty">${players.length ? "No one matches these filters" : "No registrations yet"}</td></tr>`;
 
-  renderForm();
+  renderReg();
 }
 
-/* ---------- Register form ---------- */
-const choice = { team: null, avail: null };
-for (const id of ["w1", "w2"]) {
-  $(id).innerHTML = `<option value="">— Select —</option>` + WEAPONS.map(w => `<option>${w}</option>`).join("");
-  $(id).onchange = renderForm;
-}
-document.querySelectorAll(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.onclick = () => {
-  choice[seg.dataset.k] = b.dataset.v;
-  seg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
-  renderForm();
-}));
+/* ---------- Register bar ---------- */
+let editing = false, draft = { weapon1: "", weapon2: "", team: null, avail: null }, error = "";
 
-function renderForm() {
+function renderReg() {
   if (!me) return;
-  const mine = players.find(p => p.name.toLowerCase() === me.name.toLowerCase());
-  if (mine) {
-    $("fields").innerHTML = `<div class="done"><div class="big">✅</div><b>You're registered</b>
-      <div class="week">${esc(mine.weapon1)} / ${esc(mine.weapon2)}<br>${mine.team === "attack" ? "⚔ Attack" : "🛡 Defend"} · ${esc(mine.avail)}
-      ${mine.isReserve ? "<br>Reserve slot" : ""}</div></div>`;
+  const mine = players.find(isMe);
+  const reg = $("reg");
+  if (mine && !editing) {
+    reg.innerHTML = `<div class="status"><span class="ok">✓</span><span>You're in · ${esc(mine.weapon1)} / ${esc(mine.weapon2)}
+      · ${TEAM[mine.team] || "—"} · ${esc(mine.avail)}${mine.isReserve ? " · reserve" : ""}</span>
+      <button class="link" id="edit">Edit</button></div>`;
+    $("edit").onclick = () => { editing = true; draft = { ...mine }; renderReg(); };
     return;
   }
-  $("go").disabled = !($("w1").value && $("w2").value && choice.team && choice.avail);
+  if (reg.querySelector(".form")) return syncForm();  // keep focus while the list refreshes
+  const opts = `<option value="">Select weapon</option>` + WEAPONS.map(w => `<option>${w}</option>`).join("");
+  reg.innerHTML = `<div class="form">
+      <span class="who">${me.avatar ? `<img src="${esc(me.avatar)}" alt="">` : ""}${esc(me.name)}</span>
+      <select id="w1" aria-label="Weapon 1">${opts}</select>
+      <select id="w2" aria-label="Weapon 2">${opts}</select>
+      <span class="seg" data-k="team"><button data-v="attack">Attack</button><button data-v="defend">Defend</button></span>
+      <span class="seg" data-k="avail"><button data-v="Saturday">Sat</button><button data-v="Sunday">Sun</button><button data-v="Sat & Sun">Both</button></span>
+      <button class="go" id="go">${editing ? "Save" : "Confirm"}</button>
+    </div><div class="msg" id="msg"></div>`;
+  $("w1").value = draft.weapon1; $("w2").value = draft.weapon2;
+  $("w1").onchange = e => { draft.weapon1 = e.target.value; syncForm(); };
+  $("w2").onchange = e => { draft.weapon2 = e.target.value; syncForm(); };
+  reg.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+    draft[b.parentNode.dataset.k] = b.dataset.v; syncForm(); });
+  $("go").onclick = submit;
+  syncForm();
 }
 
-function say(text, ok) { $("msg").textContent = text; $("msg").className = "msg " + (ok ? "ok" : "err"); }
+function syncForm() {
+  const main = players.filter(p => !p.isReserve && !isMe(p));
+  const full = { Saturday: main.filter(sat).length >= DAY_MAX, Sunday: main.filter(sun).length >= DAY_MAX };
+  full["Sat & Sun"] = full.Saturday && full.Sunday;
+  $("reg").querySelectorAll(".seg button").forEach(b => {
+    const k = b.parentNode.dataset.k;
+    b.classList.toggle("on", draft[k] === b.dataset.v);
+    if (k === "avail") b.innerHTML = b.textContent.split(" ")[0] + (full[b.dataset.v] ? ` <span class="full">full → reserve</span>` : "");
+  });
+  $("go").disabled = !(draft.weapon1 && draft.weapon2 && draft.team && draft.avail);
+  $("msg").textContent = error;
+}
 
-$("go").onclick = async () => {
-  const w1 = $("w1").value, w2 = $("w2").value, { team, avail } = choice;
-  if (w1 === w2) return say("Weapon 1 and 2 must be different.");
+async function submit() {
+  error = "";
+  const { weapon1, weapon2, team, avail } = draft;
+  if (weapon1 === weapon2) { error = "Pick two different weapons."; return syncForm(); }
   await load();
-  if (players.some(p => p.name.toLowerCase() === me.name.toLowerCase())) return say(`"${me.name}" is already registered.`);
-  const main = players.filter(p => !p.isReserve);
+  const mine = players.find(isMe);
+  if (mine && !editing) { error = "You're already registered."; return syncForm(); }
+  const main = players.filter(p => !p.isReserve && p !== mine);
   const s = main.filter(sat).length, u = main.filter(sun).length;
   const isReserve = (avail === "Saturday" && s >= DAY_MAX) || (avail === "Sunday" && u >= DAY_MAX) ||
     (avail === "Sat & Sun" && s >= DAY_MAX && u >= DAY_MAX);
-  if (isReserve && players.length - main.length >= RESERVE_MAX) return say("All slots including reserve are full!");
-  $("go").disabled = true; $("go").textContent = "Registering…";
+  if (isReserve && players.filter(p => p.isReserve && p !== mine).length >= RESERVE_MAX) {
+    error = "All slots including reserve are full."; return syncForm(); }
+  $("go").disabled = true;
+  const data = { weapon1, weapon2, team, avail, isReserve };
   try {
-    const r = await fetch(`${REGS}.json`, { method: "POST", body: JSON.stringify({
-      name: me.name, weapon1: w1, weapon2: w2, role: null, team, avail,
-      jungle: false, jungleSide: null, isReserve, registeredAt: Date.now() }) });
+    const r = mine
+      ? await fetch(`${REGS}/${mine.key}.json`, { method: "PATCH", body: JSON.stringify(data) })
+      : await fetch(`${REGS}.json`, { method: "POST", body: JSON.stringify({ ...data, name: me.name, role: null,
+          jungle: false, jungleSide: null, registeredAt: Date.now() }) });
     if (!r.ok) throw 0;
+    editing = false;
+    $("reg").innerHTML = "";
     await load();
-  } catch {
-    say("Failed to register — try again.");
-    $("go").textContent = "Confirm Registration"; renderForm();
-  }
-};
+  } catch { error = "Couldn't save — try again."; syncForm(); }
+}
 
 /* ---------- Start ---------- */
+if (innerWidth <= 640) $("wbox").open = false;
 load();
 setInterval(load, 5000);
-signIn().then(user => {
-  me = user;
-  $("me").textContent = me.name;
-  if (me.avatar) $("avatar").src = me.avatar;
-  render();
-}).catch(e => { $("me").textContent = "Sign-in failed"; say(e.message || "Could not sign in"); });
+signIn().then(user => { me = user; render(); })
+  .catch(e => { $("reg").innerHTML = `<div class="msg">Sign-in failed: ${esc(e.message || "please reopen the dashboard")}</div>`; });
 </script>
 </body>
 </html>
