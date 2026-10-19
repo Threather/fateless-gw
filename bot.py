@@ -84,7 +84,7 @@ def regs_ref():
 
 
 # Same person, different names (old website name -> Discord nickname).
-ALIASES = {"rasmach": "xspear", "polpot": "xspear", "xinagtiandi": "xiangtuchh", "sivly": "míngyuè-月", "daes데": "daes대"}
+ALIASES = {"rasmach": "xspear", "polpot": "xspear", "xinagtiandi": "xiangtuchh", "sivly": "míngyuè-月", "daes데": "daes대", "romduol": "xspear"}
 
 
 def same_player(a, b):
