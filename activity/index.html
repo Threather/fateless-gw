@@ -40,12 +40,6 @@
   .grid { display: grid; gap: 16px; }
   .g4 { grid-template-columns: repeat(4, 1fr); }
   .g3 { grid-template-columns: repeat(3, 1fr); }
-  .rolebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-  .rolebar #roles { display: flex; gap: 6px; flex-wrap: wrap; }
-  .role { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; }
-  .role:hover { border-color: var(--faint); }
-  .role.on { border-color: var(--gold); color: var(--gold); }
-  .role b { margin-left: 4px; }
   .g2 { grid-template-columns: 2fr 1fr; }
   .g2b { grid-template-columns: 1fr 1fr; }
 
@@ -111,7 +105,7 @@
   </div>
 
   <section class="grid g3" id="kpis"></section>
-  <section class="rolebar"><span class="faint" id="rtitle"></span><span id="roles"></span></section>
+  <section class="card"><h2 id="rtitle"></h2><div class="sub">From weapons · click a bar to filter</div><div id="roles"></div></section>
 
   <section class="card" style="margin-top:16px"><h2>Roster <span class="faint" id="rcount"></span></h2>
       <div class="sub">This week · follows every filter</div>
@@ -304,11 +298,18 @@ function renderKpis(players, prev, missing, wi) {
 
   // Role breakdown for the selected box
   const group = filtered(players, "role");
-  $("rtitle").textContent = "Roles · " + (f.day ? f.day : "everyone") + ":";
-  $("roles").innerHTML = ROLES.map(([r, label]) => {
-    const n = group.filter(p => roleOf(p) === r).length;
-    return `<button class="role ${f.role === r ? "on" : ""}" data-r="${r}">${label}<b>${n}</b></button>`;
-  }).join("");
+  $("rtitle").textContent = "Roles · " + (f.day ? "can play " + f.day : "everyone registered");
+  const counts = ROLES.map(([r, label]) => [r, label, group.filter(p => roleOf(p) === r).length]);
+  const top = Math.max(1, ...counts.map(c => c[2])), W = 520, L = 80, rowH = 26, bw = W - L - 50;
+  $("roles").innerHTML = `<svg viewBox="0 0 ${W} ${counts.length * rowH}" style="width:100%;max-width:640px">${counts.map(([r, label, n], i) => {
+    const y = i * rowH, pct = group.length ? Math.round(n / group.length * 100) : 0;
+    return `<g class="hit ${f.role && f.role !== r ? "dim" : ""}" data-r="${r}">
+      <rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
+      <text x="0" y="${y + 17}" style="fill:${f.role === r ? "var(--gold)" : "var(--text)"}">${label}</text>
+      <rect x="${L}" y="${y + 6}" width="${bw}" height="14" rx="2" fill="var(--bg)"/>
+      <rect x="${L}" y="${y + 6}" width="${n / top * bw}" height="14" rx="2" fill="var(--gold)"/>
+      <text x="${L + n / top * bw + 6}" y="${y + 17}" style="fill:var(--text)">${n} <tspan style="fill:var(--faint)">${pct}%</tspan></text></g>`;
+  }).join("")}</svg>`;
   $("roles").querySelectorAll("[data-r]").forEach(b => b.onclick = () => toggle("role", b.dataset.r));
 }
 
