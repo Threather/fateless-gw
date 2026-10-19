@@ -11,7 +11,6 @@ from pathlib import Path
 import discord
 import requests
 import firebase_admin
-from discord import app_commands
 from firebase_admin import credentials, db
 
 HERE = Path(__file__).parent
@@ -151,7 +150,6 @@ def weapon_emoji(weapon):
 
 
 client = discord.Client(intents=discord.Intents.default())
-tree = app_commands.CommandTree(client)
 intro_messages = []  # register messages to refresh after each signup
 
 
@@ -277,10 +275,9 @@ async def on_ready():
     if not listening:
         listening = True
         db.reference("activity_auth").listen(handle_activity_login)
-    await tree.sync()
     intro_messages.clear()
     for guild in client.guilds:
-        channel = discord.utils.get(guild.text_channels, name=REGISTER_CHANNEL)
+        channel = next((c for c in guild.text_channels if c.name.endswith(REGISTER_CHANNEL)), None)
         if channel is None:
             print(f"#{REGISTER_CHANNEL} not found in {guild.name}")
             continue
