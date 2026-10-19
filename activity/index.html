@@ -117,7 +117,7 @@
         <span>│ 8-wk avg</span></div>
       <div id="comp"></div></div>
     <div class="card"><h2>Not signed up</h2>
-      <div class="sub">Regulars (3+ of the last 6 weeks) missing this week</div>
+      <div class="sub">Everyone who registered before but not this week · most recent first</div>
       <div class="missing" id="missing"></div>
       <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
   </section>
@@ -240,7 +240,7 @@ function render() {
   const players = data[week] || [];
   const prevPlayers = data[weeks[wi - 1]] || [];
   const { people, last12 } = history(week);
-  const missing = Object.values(people).filter(p => p.regular && !p.weeks[week]).sort((a, b) => b.rel - a.rel);
+  const missing = Object.values(people).filter(p => !p.weeks[week]).sort((a, b) => b.last.localeCompare(a.last) || b.rel - a.rel);
 
   renderChips();
   renderKpis(players, prevPlayers, missing, wi);
@@ -288,7 +288,7 @@ function renderKpis(players, prev, missing, wi) {
       ${spark(hist(d), max)}</div>`;
   }).join("") + `<div class="card kpi" id="kmiss">
       <div class="label">Not signed up</div>
-      <div class="v" style="color:${missing.length ? "var(--red)" : "var(--text)"}">${missing.length} <small>regulars</small></div>
+      <div class="v" style="color:${missing.length ? "var(--red)" : "var(--text)"}">${missing.length} <small>players</small></div>
       <div class="sub" style="margin:8px 0 0">${missing.slice(0, 3).map(p => esc(p.name)).join(", ") || "Everyone's in"}${missing.length > 3 ? "…" : ""}</div></div>`;
   $("kpis").querySelectorAll("[data-d]").forEach(t => t.onclick = () => toggle("day", t.dataset.d));
   $("kmiss").onclick = () => $("missing").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -325,7 +325,7 @@ function renderMissing(missing) {
   $("missing").innerHTML = missing.map(p => `<div class="row"><span class="n">${esc(p.name)}</span>
       <span class="faint">${esc(p.p.weapon1)} / ${esc(p.p.weapon2)}</span>
       <span class="r">${p.rel}% · last ${fmtWeek(p.last)}</span></div>`).join("")
-    || `<div class="empty">Every regular is signed up 🎉</div>`;
+    || `<div class="empty">Everyone is signed up 🎉</div>`;
   $("copy").onclick = async () => {
     const text = missing.map(p => p.name).join(", ");
     try { await navigator.clipboard.writeText(text); $("copy").textContent = "Copied ✓"; }
