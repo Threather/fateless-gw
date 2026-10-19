@@ -13,7 +13,7 @@
   --border:rgba(233,229,220,.07);--border-hi:#23262f;
   --gold:var(--brass);--gold-dim:rgba(184,147,74,.13);--gold-glow:rgba(184,147,74,.32);
   --text1:var(--bone);--text2:var(--dim);--text3:#55534c;
-  --heal:#6b9b78;--tank:#b07c45;--dps:#6285a8;--def:#6f7f96;--atk:#b8934a;
+  --heal:#3ba55d;--tank:#f0883e;--dps:#4f8fe0;--def:#6f7f96;--atk:#b8934a;
   --display:"Bodoni Moda",Georgia,serif;--body:"Inter",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
   --r:0px;--r-sm:0px;
 }
@@ -335,6 +335,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 <script type="module">
 // Inside the Discord Activity, Firebase is reached through the /fb URL mapping (no SDK).
 const DB = "/fb";
+// Role from the main weapon (Weapon 1), same rule as the dashboard
+const HEALER_W = new Set(["Panacea Fan", "Soulshade Umbrella"]);
+const TANK_W = new Set(["Thundercry Blade", "Stormbreaker Spear"]);
+const roleOf = p => HEALER_W.has(p.weapon1) ? "heal" : TANK_W.has(p.weapon1) ? "tank" : "dps";
 
 // ── WEEK KEY ──
 function getWeekKey() {
@@ -515,9 +519,12 @@ viewport.addEventListener('touchmove', e => {
 viewport.addEventListener('touchend', () => { lastPinchDist = null; });
 
 // ── PAN (mouse) ──
+// In Select mode, dragging empty map also pans (like Google Maps)
+const canPan = e => mode === 'pan' || (mode === 'select' && !e.target.closest('.marker, .pmarker'));
+let panMoved = false;
 viewport.addEventListener('mousedown', e => {
-  if (mode === 'pan' || e.button === 1) {
-    isPanning = true;
+  if (e.button === 1 || (e.button === 0 && canPan(e))) {
+    isPanning = true; panMoved = false;
     panStart  = { x: e.clientX, y: e.clientY };
     panOrigin = { x: panX, y: panY };
     viewport.classList.add('grabbing');
@@ -526,6 +533,7 @@ viewport.addEventListener('mousedown', e => {
 });
 window.addEventListener('mousemove', e => {
   if (!isPanning) return;
+  if (Math.abs(e.clientX - panStart.x) + Math.abs(e.clientY - panStart.y) > 4) panMoved = true;
   panX = panOrigin.x + (e.clientX - panStart.x);
   panY = panOrigin.y + (e.clientY - panStart.y);
   applyTransform();
@@ -536,14 +544,15 @@ window.addEventListener('mouseup', () => {
 
 // PAN (touch single finger in pan mode)
 viewport.addEventListener('touchstart', e => {
-  if (mode === 'pan' && e.touches.length === 1) {
-    isPanning = true;
+  if (e.touches.length === 1 && canPan(e)) {
+    isPanning = true; panMoved = false;
     panStart  = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     panOrigin = { x: panX, y: panY };
   }
 }, { passive: true });
 viewport.addEventListener('touchmove', e => {
   if (isPanning && e.touches.length === 1) {
+    if (Math.abs(e.touches[0].clientX - panStart.x) + Math.abs(e.touches[0].clientY - panStart.y) > 4) panMoved = true;
     panX = panOrigin.x + (e.touches[0].clientX - panStart.x);
     panY = panOrigin.y + (e.touches[0].clientY - panStart.y);
     applyTransform();
@@ -615,7 +624,7 @@ function disarm() {
   armedEl = null;
 }
 viewport.addEventListener('click', e => {
-  if (!armedEl || !dragSrc) return;
+  if (!armedEl || !dragSrc || panMoved) return;
   if (e.target.closest('.marker, .pmarker')) return;
   window.onDrop(e);
 });
@@ -645,7 +654,7 @@ function placePly(p, wx, wy) {
   el.style.left   = wx + 'px';
   el.style.top    = wy + 'px';
   const initials  = p.name.slice(0,2).toUpperCase();
-  el.innerHTML = `<div class="pmarker-inner ${p.role}">${initials}</div><span class="pmlabel">${p.name}</span><button class="del-btn" onclick="removePly(this)">✕</button>`;
+  el.innerHTML = `<div class="pmarker-inner ${roleOf(p)}">${initials}</div><span class="pmlabel">${p.name}</span><button class="del-btn" onclick="removePly(this)">✕</button>`;
   makeDraggable(el);
   markersLayer.appendChild(el);
 
@@ -880,7 +889,7 @@ function renderPlayerSidebar() {
       const chips = tp.map(p => {
         const sideTag = p.jungleSide ? `<span class="side-tag ${p.jungleSide==='Top'?'top':'bot'}">${p.jungleSide}</span>` : '';
         return `<div class="player-chip" data-name="${p.name}" draggable="true">
-          <span class="role-dot ${p.role}"></span>
+          <span class="role-dot ${roleOf(p)}"></span>
           <span class="pname">${p.name}</span>
           ${sideTag}
         </div>`;
