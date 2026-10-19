@@ -41,8 +41,9 @@
   .g4 { grid-template-columns: repeat(4, 1fr); }
   .g3 { grid-template-columns: repeat(3, 1fr); }
   .topgrid { grid-template-columns: 3fr 1.4fr; }
-  .topgrid .card { padding: 12px; }
-  #roles svg { width: 100%; display: block; margin-top: 6px; }
+  .topgrid .card { padding: 10px 12px; }
+  .topgrid .card h2 { font-size: 11px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+  #roles svg { width: 100%; height: 84px; display: block; margin-top: 4px; }
   .g2 { grid-template-columns: 2fr 1fr; }
   .g2b { grid-template-columns: 1fr 1fr; }
 
@@ -51,7 +52,7 @@
   .kpi:hover { background: var(--raised); }
   .kpi.on { box-shadow: inset 0 0 0 1px var(--gold); }
   .kpi { display: flex; flex-direction: column; text-align: center; }
-  .kpi .big { flex: 1; display: grid; place-items: center; font-size: 44px; font-weight: 700; }
+  .kpi .big { flex: 1; display: grid; place-items: center; font-size: 36px; font-weight: 700; line-height: 1.1; padding-top: 4px; }
   .kpi .v { font-size: 26px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
   .kpi .v small { font-size: 14px; color: var(--faint); font-weight: 400; }
   .delta { font-size: 12px; margin-left: 6px; } .up { color: var(--gold); } .down { color: var(--red); }
