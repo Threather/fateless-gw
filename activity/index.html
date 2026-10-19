@@ -90,6 +90,17 @@
   .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--raised); color: var(--muted); }
   .tag.attack { color: var(--gold); }
   .empty { color: var(--faint); padding: 12px 4px; }
+  .avail th.c, .avail td.c { text-align: center; }
+  .avail tr.day td { cursor: pointer; font-weight: 600; background: var(--raised); }
+  .avail tr.day td.c { font-weight: 400; color: var(--muted); }
+  .avail tr.day td.t { color: var(--text); font-weight: 600; }
+  .avail tr.teams { cursor: default; } .avail tr.teams:hover td { background: none; }
+  .teamgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 4px 0; }
+  .team { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+  .team h3 { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+  .team .who { display: flex; flex-wrap: wrap; gap: 6px; }
+  .team .who button { background: var(--bg); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
+  .team .who button:hover { outline: 1px solid var(--faint); }
   .tablewrap { max-height: 420px; overflow: auto; }
 
   @media (max-width: 860px) {
@@ -123,6 +134,11 @@
       <div class="missing" id="missing"></div>
       <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
   </section>
+
+  <section class="card"><h2>Availability breakdown</h2>
+    <div class="sub">Click a day to show or hide its teams · click a name to filter</div>
+    <table class="avail"><thead><tr><th>Day</th><th class="c" style="color:#3ba55d">Heal</th><th class="c" style="color:#f0883e">Tank</th>
+      <th class="c" style="color:#4f8fe0">DPS</th><th class="c">Total</th></tr></thead><tbody id="avail"></tbody></table></section>
 
   <section class="grid">
     <div class="card"><h2>Weapons</h2>
@@ -265,6 +281,7 @@ function render() {
   renderTrend(wi);
   renderRel(people, last12);
   renderRoster(players);
+  renderAvail(players);
 }
 
 function renderChips() {
@@ -391,6 +408,26 @@ function renderRel(people, last12) {
   $("rel").querySelectorAll("[data-p]").forEach(r => r.onclick = () => toggle("player", r.dataset.p));
 }
 document.querySelectorAll("th.sort").forEach(th => th.onclick = () => { relSort = th.dataset.s; render(); });
+
+const openDays = { Saturday: true, Sunday: true };
+function renderAvail(players) {
+  const list = filtered(players, "day");
+  $("avail").innerHTML = ["Saturday", "Sunday"].map(d => {
+    const dayP = list.filter(p => match.day(p, d));
+    const n = r => dayP.filter(p => roleOf(p) === r).length;
+    const team = (t, label, color) => {
+      const ps = dayP.filter(p => p.team === t);
+      return `<div class="team" style="border-color:${color}55"><h3 style="color:${color}">${label} (${ps.length})</h3>
+        <div class="who">${ps.map(p => `<button data-p="${esc(key(p.name))}" style="color:${ROLE_COLOR[roleOf(p)]}">${esc(p.name)}${p.isReserve ? " · R" : ""}</button>`).join("")
+          || '<span class="faint">No players</span>'}</div></div>`;
+    };
+    return `<tr class="day" data-day="${d}"><td>${openDays[d] ? "▾" : "▸"} ${d}</td>
+        <td class="c">${n("healer")}</td><td class="c">${n("tank")}</td><td class="c">${n("dps")}</td><td class="c t">${dayP.length}</td></tr>`
+      + (openDays[d] ? `<tr class="teams"><td colspan="5"><div class="teamgrid">${team("defend", "🛡 Defend", "#4f8fe0")}${team("attack", "⚔ Attack", "#f0883e")}</div></td></tr>` : "");
+  }).join("");
+  $("avail").querySelectorAll("tr.day").forEach(r => r.onclick = () => { openDays[r.dataset.day] = !openDays[r.dataset.day]; render(); });
+  $("avail").querySelectorAll("[data-p]").forEach(b => b.onclick = () => toggle("player", b.dataset.p));
+}
 
 function renderRoster(players) {
   const list = filtered(players, null);
