@@ -117,7 +117,7 @@
         <span>│ 8-wk avg</span></div>
       <div id="comp"></div></div>
     <div class="card"><h2>Not signed up</h2>
-      <div class="sub">Everyone who registered before but not this week · most recent first</div>
+      <div class="sub">Registered since August but not this week · most recent first</div>
       <div class="missing" id="missing"></div>
       <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
   </section>
@@ -240,7 +240,7 @@ function render() {
   const players = data[week] || [];
   const prevPlayers = data[weeks[wi - 1]] || [];
   const { people, last12 } = history(week);
-  const missing = Object.values(people).filter(p => !p.weeks[week]).sort((a, b) => b.last.localeCompare(a.last) || b.rel - a.rel);
+  const missing = Object.values(people).filter(p => !p.weeks[week] && p.last >= "2026-08-01").sort((a, b) => b.last.localeCompare(a.last) || b.rel - a.rel);
 
   renderChips();
   renderKpis(players, prevPlayers, missing, wi);
