@@ -6,260 +6,419 @@
 <title>Fateless GW</title>
 <style>
   :root {
-    --bg: #2b2d31; --surface: #35373c; --line: #3f4147;
+    --bg: #2b2d31; --surface: #313338; --raised: #383a40; --line: #3f4147;
     --text: #f2f3f5; --muted: #b5bac1; --faint: #80848e;
-    --accent: #d4a84a; --accent-weak: rgba(212, 168, 74, .14);
-    --danger: #e5484d;
+    --gold: #d4a84a; --gold-weak: rgba(212, 168, 74, .16); --gray: #80848e; --red: #ed4245;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--text); min-height: 100dvh; }
-  body { font: 13px/20px system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
-    padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
-  button, select { font: inherit; color: inherit; }
-  .wrap { max-width: 1080px; margin: 0 auto; }
-  .label { font-size: 11px; line-height: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-  .muted { color: var(--muted); }
+  body { font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
+    padding: 0 16px calc(32px + env(safe-area-inset-bottom)); }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 
-  header { display: flex; align-items: center; gap: 12px; padding: 20px 0 16px; border-bottom: 1px solid var(--line); }
-  header .logo { width: 40px; height: 40px; border-radius: 50%; }
-  header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
-  header .muted { margin-left: auto; }
+  /* Sticky top bar: logo, week picker, active filters */
+  .top { position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; align-items: center; gap: 12px;
+    flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .top img { width: 36px; height: 36px; border-radius: 50%; }
+  .top h1 { font-size: 15px; font-weight: 700; letter-spacing: .03em; }
+  .week { display: flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 6px; }
+  .week button { padding: 4px 10px; color: var(--muted); } .week button:hover { color: var(--text); }
+  .week button:disabled { opacity: .3; cursor: default; }
+  .week span { min-width: 120px; text-align: center; font-weight: 600; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-left: auto; }
+  .chip { background: var(--gold-weak); color: var(--gold); border-radius: 999px; padding: 2px 10px; }
+  .clear { color: var(--muted); text-decoration: underline; }
 
-  /* Register bar */
-  #reg { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; }
-  .form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .who { display: flex; align-items: center; gap: 8px; margin-right: 8px; font-weight: 600; }
-  .who img { width: 24px; height: 24px; border-radius: 50%; background: var(--line); }
-  select, .wpick { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; height: 36px; padding: 0 8px;
-    min-width: 170px; font-size: 16px; }
-  @media (min-width: 640px) { select { font-size: 13px; } }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-  .seg button { background: none; border: 0; height: 34px; padding: 0 12px; cursor: pointer; color: var(--muted); }
-  .seg button + button { border-left: 1px solid var(--line); }
-  .seg button.on { background: var(--accent-weak); color: var(--accent); }
-  .seg button .full { color: var(--danger); font-size: 11px; }
-  .go { margin-left: auto; height: 36px; padding: 0 20px; border: 0; border-radius: 6px; background: var(--accent);
-    color: #111; font-weight: 600; cursor: pointer; }
-  .go:disabled { background: var(--line); color: var(--faint); cursor: default; }
-  .status { display: flex; align-items: center; gap: 8px; }
-  .status .ok { color: var(--accent); }
-  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; margin-left: auto; }
-  .msg { color: var(--danger); margin-top: 8px; }
-  .msg:empty { display: none; }
+  section { margin-top: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .card h2 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .card .sub { color: var(--faint); font-size: 12px; margin-bottom: 12px; }
+  .grid { display: grid; gap: 16px; }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g2 { grid-template-columns: 2fr 1fr; }
+  .g2b { grid-template-columns: 1fr 1fr; }
 
-  /* Day strip */
-  .days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 24px 0; }
-  .day { background: none; border: 0; text-align: left; cursor: pointer; padding: 8px; margin: -8px; border-radius: 6px; }
-  .day:hover { background: var(--surface); }
-  .day.on { background: var(--accent-weak); }
-  .day.on .label { color: var(--accent); }
-  .day .n { font-size: 28px; line-height: 32px; font-weight: 600; margin: 4px 0 8px; }
-  .day .n small { font-size: 13px; color: var(--muted); font-weight: 400; }
-  .bar { height: 2px; background: var(--line); }
-  .bar i { display: block; height: 100%; background: var(--muted); }
-  .bar i.hot { background: var(--accent); }
-  .bar i.full { background: var(--danger); }
+  /* KPI tiles */
+  .kpi { cursor: pointer; transition: background .15s; }
+  .kpi:hover { background: var(--raised); }
+  .kpi.on { box-shadow: inset 0 0 0 1px var(--gold); }
+  .kpi .v { font-size: 30px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
+  .kpi .v small { font-size: 14px; color: var(--faint); font-weight: 400; }
+  .delta { font-size: 12px; margin-left: 6px; } .up { color: var(--gold); } .down { color: var(--red); }
+  .meter { height: 4px; background: var(--line); border-radius: 2px; margin: 8px 0 6px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--gold); }
+  .meter i.low { background: var(--red); }
+  .kpi svg { width: 100%; height: 26px; display: block; }
 
-  /* Weapons + roster */
-  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
-  .head { display: flex; align-items: center; gap: 8px; height: 36px; border-bottom: 1px solid var(--line); }
-  .head .seg { margin-left: auto; }
-  .head .seg button { height: 28px; font-size: 12px; }
-  .w { display: grid; grid-template-columns: 1fr 64px 24px; align-items: center; gap: 12px; width: 100%; height: 32px;
-    padding: 0 8px; background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left; }
-  .w:hover { background: var(--surface); }
-  .w.on { background: var(--accent-weak); color: var(--accent); }
-  .w .bar { height: 4px; border-radius: 2px; }
-  .w.dim .bar i { opacity: .35; }
-  .w .c { text-align: right; color: var(--muted); }
-  .unused { color: var(--faint); padding: 8px; }
-  details summary { list-style: none; }
-  details summary::-webkit-details-marker { display: none; }
+  /* Gaps */
+  .gaps { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gap { display: flex; align-items: center; gap: 8px; background: var(--raised); border-left: 3px solid var(--red);
+    border-radius: 4px; padding: 6px 10px; text-align: left; }
+  .gap.ok { border-left-color: var(--gold); }
+  .gap:hover { background: var(--line); }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; }
-  .chips:empty { display: none; }
-  .chip { background: var(--accent-weak); color: var(--accent); border: 0; border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+  /* Charts */
+  svg text { fill: var(--muted); font: 11px system-ui, sans-serif; }
+  .scroll-x { overflow-x: auto; }
+  .hit { cursor: pointer; }
+  .dim { opacity: .25; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+  /* Lists */
+  .missing { max-height: 300px; overflow: auto; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border: 0; }
+  .row .n { font-weight: 600; } .row .r { margin-left: auto; color: var(--faint); font-size: 12px; white-space: nowrap; }
+  .btn { background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-size: 12px; }
+  .btn:hover { border-color: var(--gold); }
+
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-weight: 400; }
-  td, th { height: 36px; padding: 0 8px; border-bottom: 1px solid var(--line); }
-  tr.me td:first-child { box-shadow: inset 2px 0 var(--accent); }
-  .r2 { display: none; }
-  .empty { color: var(--faint); padding: 16px 8px; }
+  th { text-align: left; font-weight: 400; color: var(--muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .06em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th.sort { cursor: pointer; } th.sort:hover { color: var(--text); }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  tbody tr { cursor: pointer; } tbody tr:hover td { background: var(--raised); }
+  tr.sel td { background: var(--gold-weak); }
+  .strip { display: flex; gap: 3px; }
+  .strip i { width: 10px; height: 10px; border-radius: 2px; background: var(--line); }
+  .strip i.main { background: var(--gold); } .strip i.res { box-shadow: inset 0 0 0 1.5px var(--gold); background: none; }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--raised); color: var(--muted); }
+  .tag.attack { color: var(--gold); }
+  .empty { color: var(--faint); padding: 12px 4px; }
+  .tablewrap { max-height: 420px; overflow: auto; }
 
-  @media (max-width: 640px) {
-    .days { gap: 16px; }
-    .day .n { font-size: 22px; line-height: 28px; }
-    .grid { grid-template-columns: 1fr; }
-    .form select, .form .wpick { flex: 1 1 100%; }
-    .form .seg { flex: 1; }
-    .form .seg button { flex: 1; height: 40px; }
-    .go { flex: 1 1 100%; height: 44px; margin: 0; }
-    .head .seg button { height: 32px; }
-    thead, .col { display: none; }
-    .r2 { display: block; color: var(--muted); }
-    td { height: auto; padding: 8px; }
+  @media (max-width: 860px) {
+    .g4 { grid-template-columns: repeat(2, 1fr); }
+    .g2, .g2b { grid-template-columns: 1fr; }
+    .chips { margin-left: 0; width: 100%; }
+    .hide-m { display: none; }
   }
-  @media (min-width: 641px) { details[open] > summary, details > summary { pointer-events: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><img class="logo" src="logo.webp" alt=""><h1>FATELESS GW</h1><span class="muted" id="week"></span><span class="muted" id="total"></span></header>
+  <div class="top">
+    <img src="logo.webp" alt="">
+    <h1>FATELESS · GUILD WAR</h1>
+    <div class="week"><button id="prev" aria-label="Previous week">‹</button><span id="wk"></span>
+      <button id="next" aria-label="Next week">›</button></div>
+    <div class="chips" id="chips"></div>
+  </div>
 
+  <section class="grid g4" id="kpis"></section>
 
-  <section class="days" id="days"></section>
+  <section class="card"><h2>Gaps this week</h2><div class="sub">Things to fix before war — click one to filter</div>
+    <div class="gaps" id="gaps"></div></section>
 
-  <section class="grid">
-    <details id="wbox" open>
-      <summary class="head label">Weapons <span id="wsel"></span></summary>
-      <div id="weapons"></div>
-    </details>
-    <div>
-      <div class="head"><span class="label">Roster</span>
-        <span class="seg" id="roles"></span></div>
-      <div class="chips" id="chips"></div>
-      <table>
-        <thead><tr class="label"><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
+  <section class="grid g2">
+    <div class="card"><h2>Composition by weapon family</h2>
+      <div class="sub">Players per family, split Attack / Defend · tick = 8-week average · click a bar to filter</div>
+      <div class="legend"><span><b style="background:var(--gold)"></b>Attack</span><span><b style="background:var(--gray)"></b>Defend</span>
+        <span>│ 8-wk avg</span></div>
+      <div id="comp"></div></div>
+    <div class="card"><h2>Not signed up</h2>
+      <div class="sub">Regulars (3+ of the last 6 weeks) missing this week</div>
+      <div class="missing" id="missing"></div>
+      <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
+  </section>
+
+  <section class="card"><h2>Attendance trend</h2>
+    <div class="sub">Main roster per week · dashed line = 30 cap · click a week to open it</div>
+    <div class="legend"><span><b style="background:var(--gold)"></b>Saturday</span><span><b style="background:var(--gray)"></b>Sunday</span></div>
+    <div class="scroll-x" id="trend"></div></section>
+
+  <section class="grid g2b">
+    <div class="card"><h2>Reliability</h2>
+      <div class="sub">Last 12 weeks · ■ main ▢ reserve · click a player to filter</div>
+      <div class="tablewrap"><table><thead><tr><th class="sort" data-s="name">Player</th><th>12 weeks</th>
+        <th class="sort" data-s="rel">Rel.</th><th class="sort hide-m" data-s="streak">Streak</th></tr></thead>
+        <tbody id="rel"></tbody></table></div></div>
+    <div class="card"><h2>Roster <span class="faint" id="rcount"></span></h2>
+      <div class="sub">This week · follows every filter</div>
+      <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
+        <tbody id="roster"></tbody></table></div></div>
   </section>
 </div>
 
 <script>
 const CLIENT_ID = "1561639617776590889";
 const DB = "/fb";  // proxied to Firebase by the Activity URL mapping
-const DAY_MAX = 30, RESERVE_MAX = 60;
-const WEAPONS = [
-  "Nameless Sword","Nameless Spear","Stormbreaker Spear","Thundercry Blade",
-  "Infernal Twinblades","Mortal Rope Dart","Vernal Umbrella","Inkwell Fan",
-  "Panacea Fan","Soulshade Umbrella","Heavenquaker Spear","Strategic Sword",
-  "Snowparting Blade","Phalanxbane Blade","Everspring Umbrella","Unfettered Rope Dart",
-  "Heavenwill Gauntlets","Skygrasp Rope Dart"
-];
-const TEAM = { attack: "Attack", defend: "Defend" };
+const DAY_MAX = 30, RESERVE_MAX = 60, LOW_DAY = 24, MIN_HEALERS = 3;
+const FAMILY = {
+  "Nameless Sword": "Sword", "Strategic Sword": "Sword",
+  "Nameless Spear": "Spear", "Stormbreaker Spear": "Spear", "Heavenquaker Spear": "Spear",
+  "Thundercry Blade": "Blade", "Snowparting Blade": "Blade", "Phalanxbane Blade": "Blade",
+  "Infernal Twinblades": "Twinblades",
+  "Mortal Rope Dart": "Rope Dart", "Unfettered Rope Dart": "Rope Dart", "Skygrasp Rope Dart": "Rope Dart",
+  "Vernal Umbrella": "Umbrella", "Soulshade Umbrella": "Umbrella", "Everspring Umbrella": "Umbrella",
+  "Inkwell Fan": "Fan", "Panacea Fan": "Fan",
+  "Heavenwill Gauntlets": "Gauntlets",
+};
+const FAMILIES = ["Sword", "Spear", "Blade", "Twinblades", "Rope Dart", "Gauntlets", "Umbrella", "Fan"];
+const HEAL = new Set(["Umbrella", "Fan"]);  // healers inferred from weapon family
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const key = n => String(n || "").trim().toLowerCase();
 
-function weekKey() {
+// Keep the Discord frame happy (Embedded App handshake); the page itself needs no sign-in.
+const params = new URLSearchParams(location.search);
+if (params.get("frame_id")) window.parent.postMessage([0, { v: 1, encoding: "json", client_id: CLIENT_ID,
+  frame_id: params.get("frame_id") }], "*");
+
+function currentWeek() {
   const now = new Date(Date.now() + 7 * 3600e3);  // Cambodia time
   const day = now.getUTCDay();
   now.setUTCDate(now.getUTCDate() - (day === 0 ? 6 : day - 1));
   return now.toISOString().slice(0, 10);
 }
-const WEEK = weekKey();
-const REGS = `${DB}/guild_wars/${WEEK}/registrations`;
-$("week").textContent = "Week of " + WEEK;
+const fmtWeek = w => new Date(w + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
-/* ---------- Discord connection (Embedded App postMessage protocol) ---------- */
-const params = new URLSearchParams(location.search);
-const pending = {};
-function rpc(cmd, args) {
-  const nonce = crypto.randomUUID();
-  window.parent.postMessage([1, { cmd, nonce, args }], "*");
-  return new Promise((res, rej) => pending[nonce] = { res, rej });
-}
-let readyResolve; const ready = new Promise(r => readyResolve = r);
-window.addEventListener("message", ({ data }) => {
-  if (!Array.isArray(data)) return;
-  const [, msg] = data;
-  if (!msg) return;
-  if (msg.evt === "READY") return readyResolve();
-  const p = pending[msg.nonce];
-  if (!p) return;
-  delete pending[msg.nonce];
-  msg.evt === "ERROR" ? p.rej(msg.data) : p.res(msg.data);
-});
-window.parent.postMessage([0, { v: 1, encoding: "json", client_id: CLIENT_ID,
-  frame_id: params.get("frame_id") }], "*");
-
-let me = null;
-
-/* ---------- Data + filters ---------- */
-let players = [];
-const filter = { day: null, team: null, weapon: null };  // day: Saturday | Sunday | reserve
-
-async function load() {
-  try {
-    const val = await (await fetch(`${REGS}.json`)).json();
-    players = Object.entries(val || {}).map(([key, p]) => ({ key, ...p }))
-      .sort((a, b) => a.registeredAt - b.registeredAt);
-    render();
-  } catch { $("total").textContent = "· offline"; }
-}
+/* ---------- Data ---------- */
+let weeks = [];          // sorted week keys
+const data = {};         // week -> [players]
+let week = currentWeek();
+const f = { day: null, team: null, family: null, player: null };  // cross-filter state
+let relSort = "rel";
 
 const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
 const sun = p => p.avail === "Sunday" || p.avail === "Sat & Sun";
-const isMe = p => me && p.name.toLowerCase() === me.name.toLowerCase();
+const fams = p => [...new Set([FAMILY[p.weapon1], FAMILY[p.weapon2]].filter(Boolean))];
+
+function ingest(w, val) {
+  data[w] = Object.values(val || {}).filter(p => p && p.name).sort((a, b) => (a.registeredAt || 0) - (b.registeredAt || 0));
+}
+async function loadAll() {
+  const all = await (await fetch(`${DB}/guild_wars.json`)).json() || {};
+  for (const [w, v] of Object.entries(all)) ingest(w, v.registrations);
+  weeks = [...new Set([...Object.keys(all), currentWeek()])].sort();
+  render();
+}
+async function loadCurrent() {
+  const w = currentWeek();
+  const val = await (await fetch(`${DB}/guild_wars/${w}/registrations.json`)).json();
+  ingest(w, val);
+  if (week === w) render();
+}
+
+/* ---------- Filters ---------- */
 const match = {
   day: (p, v) => v === "reserve" ? p.isReserve : !p.isReserve && (v === "Saturday" ? sat(p) : sun(p)),
   team: (p, v) => p.team === v,
-  weapon: (p, v) => p.weapon1 === v || p.weapon2 === v,
+  family: (p, v) => fams(p).includes(v),
+  player: (p, v) => key(p.name) === v,
 };
-// Every visual is filtered by the *other* dimensions, never by itself (Power BI cross-filter).
-const filtered = (except) => players.filter(p =>
-  Object.entries(filter).every(([k, v]) => k === except || v === null || match[k](p, v)));
-function toggle(k, v) { filter[k] = filter[k] === v ? null : v; render(); }
-addEventListener("keydown", e => { if (e.key === "Escape") { for (const k in filter) filter[k] = null; render(); } });
+const filtered = (list, except) => list.filter(p =>
+  Object.entries(f).every(([k, v]) => k === except || v === null || match[k](p, v)));
+function toggle(k, v) { f[k] = f[k] === v ? null : v; render(); }
+function setFilters(obj) { for (const k in f) f[k] = null; Object.assign(f, obj); render(); }
+addEventListener("keydown", e => { if (e.key === "Escape") setFilters({}); });
 
-function render() {
-  $("total").textContent = "· " + players.length + " registered";
-
-  // Day strip — the KPIs and the day filter in one
-  const forDays = filtered("day"), main = forDays.filter(p => !p.isReserve);
-  const cells = [["Saturday", main.filter(sat).length, DAY_MAX], ["Sunday", main.filter(sun).length, DAY_MAX],
-                 ["reserve", forDays.length - main.length, RESERVE_MAX]];
-  $("days").innerHTML = cells.map(([d, n, max]) => {
-    const pct = n / max, cls = pct >= 1 ? "full" : pct >= .9 ? "hot" : "";
-    return `<button class="day ${filter.day === d ? "on" : ""}" data-d="${d}">
-      <div class="label">${d === "reserve" ? "Reserve" : d}</div>
-      <div class="n">${n} <small>/ ${max}</small></div>
-      <div class="bar"><i class="${cls}" style="width:${Math.min(100, pct * 100)}%"></i></div></button>`;
-  }).join("");
-  $("days").querySelectorAll(".day").forEach(b => b.onclick = () => toggle("day", b.dataset.d));
-
-  // Weapons — only the ones in use
-  const wc = {};
-  filtered("weapon").forEach(p => [p.weapon1, p.weapon2].forEach(w => w && (wc[w] = (wc[w] || 0) + 1)));
-  const used = Object.entries(wc).sort((a, b) => b[1] - a[1]), max = used[0]?.[1] || 1;
-  $("weapons").innerHTML = used.map(([w, n]) => `<button class="w ${filter.weapon === w ? "on" : filter.weapon ? "dim" : ""}" data-w="${esc(w)}">
-      <span>${esc(w)}</span><span class="bar"><i style="width:${n / max * 100}%"></i></span><span class="c">${n}</span></button>`).join("")
-    + (used.length < WEAPONS.length ? `<div class="unused">+${WEAPONS.length - used.length} unused</div>` : "");
-  $("weapons").querySelectorAll(".w").forEach(b => b.onclick = () => toggle("weapon", b.dataset.w));
-  $("wsel").textContent = filter.weapon ? "· " + filter.weapon : "";
-
-  // Team segmented filter
-  const forTeam = filtered("team");
-  const tc = t => forTeam.filter(p => p.team === t).length;
-  $("roles").innerHTML = [[null, "All"], ["attack", "Attack " + tc("attack")], ["defend", "Defend " + tc("defend")]]
-    .map(([t, l]) => `<button class="${filter.team === t ? "on" : ""}" data-t="${t ?? ""}">${l}</button>`).join("");
-  $("roles").querySelectorAll("button").forEach(b => b.onclick = () => {
-    filter.team = b.dataset.t || null; render(); });
-
-  // Active filter chips
-  const names = { day: v => v === "reserve" ? "Reserve" : v, team: v => TEAM[v], weapon: v => v };
-  const active = Object.entries(filter).filter(([, v]) => v !== null);
-  $("chips").innerHTML = active.map(([k, v]) => `<button class="chip" data-k="${k}">${esc(names[k](v))} ×</button>`).join("")
-    + (active.length ? `<button class="link" id="clear">Clear</button>` : "");
-  $("chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter[b.dataset.k] = null; render(); });
-  if (active.length) $("clear").onclick = () => { for (const k in filter) filter[k] = null; render(); };
-
-  // Roster — you first
-  const rows = filtered(null).sort((a, b) => isMe(b) - isMe(a));
-  $("rows").innerHTML = rows.map(p => {
-    const team = TEAM[p.team] || "—", day = p.isReserve ? p.avail + " · reserve" : p.avail;
-    return `<tr class="${isMe(p) ? "me" : ""}"><td>${esc(p.name)}
-      <div class="r2">${esc(p.weapon1)} / ${esc(p.weapon2)} · ${team} · ${esc(day)}</div></td>
-      <td class="col">${esc(p.weapon1)} / ${esc(p.weapon2)}</td><td class="col muted">${team}</td>
-      <td class="col muted">${esc(day)}</td></tr>`;
-  }).join("") || `<tr><td colspan="4" class="empty">${players.length ? "No one matches these filters" : "No registrations yet"}</td></tr>`;
-
+/* ---------- Derived history ---------- */
+function history(upTo) {
+  // per player: which of the previous weeks (<= upTo) they were in, and how
+  const idx = weeks.indexOf(upTo);
+  const last12 = weeks.slice(Math.max(0, idx - 11), idx + 1);
+  const people = {};
+  for (const w of weeks.slice(0, idx + 1)) for (const p of data[w] || []) {
+    const k = key(p.name);
+    (people[k] ||= { name: p.name, weeks: {}, last: null }).weeks[w] = p.isReserve ? "res" : "main";
+    people[k].name = p.name; people[k].last = w; people[k].p = p;
+  }
+  for (const person of Object.values(people)) {
+    person.strip = last12.map(w => person.weeks[w] || "");
+    person.rel = Math.round(person.strip.filter(Boolean).length / last12.length * 100);
+    let s = 0; for (let i = idx; i >= 0 && person.weeks[weeks[i]]; i--) s++;
+    person.streak = s;
+    const prev6 = weeks.slice(Math.max(0, idx - 6), idx);
+    person.regular = prev6.filter(w => person.weeks[w]).length >= 3;
+  }
+  return { people, last12 };
 }
 
+/* ---------- Render ---------- */
+function render() {
+  const wi = weeks.indexOf(week);
+  $("wk").textContent = (week === currentWeek() ? "This week · " : "Week of ") + fmtWeek(week);
+  $("prev").disabled = wi <= 0; $("next").disabled = wi >= weeks.length - 1;
+
+  const players = data[week] || [];
+  const prevPlayers = data[weeks[wi - 1]] || [];
+  const { people, last12 } = history(week);
+  const missing = Object.values(people).filter(p => p.regular && !p.weeks[week]).sort((a, b) => b.rel - a.rel);
+
+  renderChips();
+  renderKpis(players, prevPlayers, missing, wi);
+  renderGaps(players, missing);
+  renderComp(players, wi);
+  renderMissing(missing);
+  renderTrend(wi);
+  renderRel(people, last12);
+  renderRoster(players);
+}
+
+function renderChips() {
+  const name = { day: v => v === "reserve" ? "Reserve" : v, team: v => v === "attack" ? "Attack" : "Defend",
+    family: v => v, player: v => (Object.values(data).flat().find(p => key(p.name) === v) || {}).name || v };
+  const act = Object.entries(f).filter(([, v]) => v !== null);
+  $("chips").innerHTML = act.map(([k, v]) => `<button class="chip" data-k="${k}">${esc(name[k](v))} ✕</button>`).join("")
+    + (act.length ? `<button class="clear" id="clear">Clear all</button>` : "");
+  $("chips").querySelectorAll(".chip").forEach(b => b.onclick = () => toggle(b.dataset.k, f[b.dataset.k]));
+  if (act.length) $("clear").onclick = () => setFilters({});
+}
+
+function spark(values, max) {
+  if (values.length < 2) return "";
+  const W = 200, H = 26, step = W / (values.length - 1);
+  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(H - 2 - v / max * (H - 4)).toFixed(1)}`);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts.join(" ")}" fill="none"
+    stroke="var(--gray)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+    <circle cx="${((values.length - 1) * step).toFixed(1)}" cy="${pts.at(-1).split(",")[1]}" r="2.5" fill="var(--gold)"/></svg>`;
+}
+
+function renderKpis(players, prev, missing, wi) {
+  const base = filtered(players, "day"), basePrev = filtered(prev, "day");
+  const count = (list, d) => list.filter(p => match.day(p, d)).length;
+  const hist = d => weeks.slice(Math.max(0, wi - 11), wi + 1).map(w => count(filtered(data[w] || [], "day"), d));
+  const tiles = [
+    ["Saturday", "Saturday main", count(base, "Saturday"), DAY_MAX, count(basePrev, "Saturday")],
+    ["Sunday", "Sunday main", count(base, "Sunday"), DAY_MAX, count(basePrev, "Sunday")],
+    ["reserve", "Reserve", count(base, "reserve"), RESERVE_MAX, count(basePrev, "reserve")],
+  ];
+  $("kpis").innerHTML = tiles.map(([d, label, n, max, before]) => {
+    const dl = n - before, low = d !== "reserve" && n < LOW_DAY;
+    return `<div class="card kpi ${f.day === d ? "on" : ""}" data-d="${d}">
+      <div class="label">${label}</div>
+      <div class="v">${n} <small>/ ${max}</small>${wi > 0 && dl ? `<span class="delta ${dl > 0 ? "up" : "down"}">${dl > 0 ? "▲" : "▼"} ${Math.abs(dl)}</span>` : ""}</div>
+      <div class="meter"><i class="${low ? "low" : ""}" style="width:${Math.min(100, n / max * 100)}%"></i></div>
+      ${spark(hist(d), max)}</div>`;
+  }).join("") + `<div class="card kpi" id="kmiss">
+      <div class="label">Not signed up</div>
+      <div class="v" style="color:${missing.length ? "var(--red)" : "var(--text)"}">${missing.length} <small>regulars</small></div>
+      <div class="sub" style="margin:8px 0 0">${missing.slice(0, 3).map(p => esc(p.name)).join(", ") || "Everyone's in"}${missing.length > 3 ? "…" : ""}</div></div>`;
+  $("kpis").querySelectorAll("[data-d]").forEach(t => t.onclick = () => toggle("day", t.dataset.d));
+  $("kmiss").onclick = () => $("missing").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function renderGaps(players, missing) {
+  const main = players.filter(p => !p.isReserve), gaps = [];
+  for (const d of ["Saturday", "Sunday"]) {
+    const dayP = main.filter(p => match.day(p, d));
+    if (dayP.length < LOW_DAY) gaps.push([`${d}: only ${dayP.length}/${DAY_MAX} main`, { day: d }]);
+    for (const t of ["attack", "defend"]) {
+      const h = dayP.filter(p => p.team === t && fams(p).some(x => HEAL.has(x))).length;
+      if (h < MIN_HEALERS) gaps.push([`${d.slice(0, 3)} ${t === "attack" ? "Attack" : "Defend"}: ${h} healer${h === 1 ? "" : "s"} (need ${MIN_HEALERS})`,
+        { day: d, team: t }]);
+    }
+  }
+  if (missing.length) gaps.push([`${missing.length} regular${missing.length === 1 ? "" : "s"} not signed up`, null]);
+  $("gaps").innerHTML = gaps.length
+    ? gaps.map(([t], i) => `<button class="gap" data-i="${i}">${esc(t)}</button>`).join("")
+    : `<div class="gap ok">No gaps — both days look ready</div>`;
+  $("gaps").querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
+    const g = gaps[b.dataset.i][1];
+    g ? setFilters(g) : $("missing").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
+function renderComp(players, wi) {
+  const list = filtered(players, "family");
+  const prev8 = weeks.slice(Math.max(0, wi - 8), wi);
+  const rows = FAMILIES.map(fam => {
+    const has = p => fams(p).includes(fam);
+    const avg = prev8.length ? prev8.reduce((s, w) => s + filtered(data[w] || [], "family").filter(has).length, 0) / prev8.length : 0;
+    return { fam, atk: list.filter(p => has(p) && p.team === "attack").length,
+             def: list.filter(p => has(p) && p.team === "defend").length, avg };
+  });
+  const max = Math.max(4, ...rows.map(r => Math.max(r.atk + r.def, r.avg)));
+  const W = 520, L = 92, R = 30, rowH = 26, bw = W - L - R;
+  const x = v => L + v / max * bw;
+  $("comp").innerHTML = `<svg viewBox="0 0 ${W} ${rows.length * rowH}" style="width:100%;max-width:640px">${rows.map((r, i) => {
+    const y = i * rowH, dim = f.family && f.family !== r.fam ? "dim" : "";
+    const heal = HEAL.has(r.fam) ? " ✚" : "";
+    return `<g class="hit ${dim}" data-f="${r.fam}">
+      <rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
+      <text x="0" y="${y + 17}" style="fill:${f.family === r.fam ? "var(--gold)" : "var(--text)"}">${r.fam}${heal}</text>
+      <rect x="${L}" y="${y + 6}" width="${bw}" height="14" rx="2" fill="var(--bg)"/>
+      <rect x="${L}" y="${y + 6}" width="${x(r.atk) - L}" height="14" fill="var(--gold)" class="${f.team === "defend" ? "dim" : ""}"/>
+      <rect x="${x(r.atk)}" y="${y + 6}" width="${x(r.atk + r.def) - x(r.atk)}" height="14" fill="var(--gray)" class="${f.team === "attack" ? "dim" : ""}"/>
+      ${r.avg ? `<line x1="${x(r.avg)}" x2="${x(r.avg)}" y1="${y + 3}" y2="${y + 23}" stroke="var(--text)" stroke-width="1.5"/>` : ""}
+      <text x="${x(r.atk + r.def) + 6}" y="${y + 17}">${r.atk + r.def || ""}</text></g>`;
+  }).join("")}</svg><div class="faint" style="font-size:11px;margin-top:4px">✚ healer families (inferred from weapon)</div>`;
+  $("comp").querySelectorAll("[data-f]").forEach(g => g.onclick = () => toggle("family", g.dataset.f));
+}
+
+function renderMissing(missing) {
+  $("missing").innerHTML = missing.map(p => `<div class="row"><span class="n">${esc(p.name)}</span>
+      <span class="faint">${esc(p.p.weapon1)} / ${esc(p.p.weapon2)}</span>
+      <span class="r">${p.rel}% · last ${fmtWeek(p.last)}</span></div>`).join("")
+    || `<div class="empty">Every regular is signed up 🎉</div>`;
+  $("copy").onclick = async () => {
+    const text = missing.map(p => p.name).join(", ");
+    try { await navigator.clipboard.writeText(text); $("copy").textContent = "Copied ✓"; }
+    catch { prompt("Copy these names:", text); }
+    setTimeout(() => $("copy").textContent = "Copy names", 1500);
+  };
+}
+
+function renderTrend(wi) {
+  const span = weeks.slice(Math.max(0, weeks.length - 23));
+  const H = 150, top = 10, bottom = 22, colW = 34, L = 26, W = L + span.length * colW;
+  const max = DAY_MAX + 4, y = v => top + (1 - v / max) * (H - top - bottom);
+  const bars = span.map((w, i) => {
+    const list = filtered(data[w] || [], "day").filter(p => !p.isReserve);
+    const s = list.filter(sat).length, u = list.filter(sun).length, x0 = L + i * colW + 5;
+    const sel = w === week;
+    return `<g class="hit" data-w="${w}">
+      <rect x="${L + i * colW}" y="0" width="${colW}" height="${H}" fill="${sel ? "var(--gold-weak)" : "transparent"}"/>
+      <rect x="${x0}" y="${y(s)}" width="11" height="${y(0) - y(s)}" fill="var(--gold)" class="${f.day === "Sunday" ? "dim" : ""}"/>
+      <rect x="${x0 + 13}" y="${y(u)}" width="11" height="${y(0) - y(u)}" fill="var(--gray)" class="${f.day === "Saturday" ? "dim" : ""}"/>
+      ${sel ? `<text x="${x0 + 12}" y="${y(Math.max(s, u)) - 4}" text-anchor="middle" style="fill:var(--text)">${s}/${u}</text>` : ""}
+      <text x="${x0 + 12}" y="${H - 6}" text-anchor="middle" style="${sel ? "fill:var(--gold)" : ""}">${fmtWeek(w).split(" ")[0]}${i === 0 || w.slice(8) <= "07" ? " " + fmtWeek(w).split(" ")[1] : ""}</text></g>`;
+  }).join("");
+  $("trend").innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="min-width:${W}px;width:100%;height:${H}px">
+    ${[0, 10, 20, 30].map(v => `<text x="0" y="${y(v) + 4}">${v}</text>`).join("")}
+    <line x1="${L}" x2="${W}" y1="${y(DAY_MAX)}" y2="${y(DAY_MAX)}" stroke="var(--faint)" stroke-dasharray="4 4"/>
+    <line x1="${L}" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>${bars}</svg>`;
+  $("trend").querySelectorAll("[data-w]").forEach(g => g.onclick = () => { week = g.dataset.w; render(); });
+  $("trend").scrollLeft = 1e6;
+}
+
+function renderRel(people, last12) {
+  let list = Object.values(people).filter(p => p.strip.some(Boolean));
+  list.sort(relSort === "name" ? (a, b) => a.name.localeCompare(b.name)
+    : relSort === "streak" ? (a, b) => b.streak - a.streak || b.rel - a.rel : (a, b) => b.rel - a.rel || b.streak - a.streak);
+  $("rel").innerHTML = list.map(p => `<tr class="${f.player === key(p.name) ? "sel" : ""}" data-p="${esc(key(p.name))}">
+      <td>${esc(p.name)}</td>
+      <td><div class="strip">${p.strip.map(s => `<i class="${s}"></i>`).join("")}</div></td>
+      <td>${p.rel}%</td><td class="hide-m">${p.streak ? p.streak + " wk" : "—"}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="empty">No history yet</td></tr>`;
+  $("rel").querySelectorAll("[data-p]").forEach(r => r.onclick = () => toggle("player", r.dataset.p));
+}
+document.querySelectorAll("th.sort").forEach(th => th.onclick = () => { relSort = th.dataset.s; render(); });
+
+function renderRoster(players) {
+  const list = filtered(players, null);
+  $("rcount").textContent = `· ${list.length} of ${players.length}`;
+  $("roster").innerHTML = list.map(p => `<tr class="${f.player === key(p.name) ? "sel" : ""}" data-p="${esc(key(p.name))}">
+      <td>${esc(p.name)}${p.isReserve ? ' <span class="tag">reserve</span>' : ""}</td>
+      <td class="muted">${esc(p.weapon1)} / ${esc(p.weapon2)}</td>
+      <td><span class="tag ${p.team}">${p.team === "attack" ? "Attack" : p.team === "defend" ? "Defend" : "—"}</span></td>
+      <td class="muted">${esc(p.avail)}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="empty">${players.length ? "No one matches these filters" : "No registrations this week"}</td></tr>`;
+  $("roster").querySelectorAll("[data-p]").forEach(r => r.onclick = () => toggle("player", r.dataset.p));
+}
+
+$("prev").onclick = () => { const i = weeks.indexOf(week); if (i > 0) { week = weeks[i - 1]; render(); } };
+$("next").onclick = () => { const i = weeks.indexOf(week); if (i < weeks.length - 1) { week = weeks[i + 1]; render(); } };
+
 /* ---------- Start ---------- */
-if (innerWidth <= 640) $("wbox").open = false;
-load();
-setInterval(load, 5000);
+loadAll().catch(() => $("wk").textContent = "Offline");
+setInterval(() => loadCurrent().catch(() => {}), 10000);
 </script>
 </body>
 </html>
