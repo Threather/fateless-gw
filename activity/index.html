@@ -113,19 +113,21 @@
   <section class="grid topgrid"><div class="grid g3" id="kpis"></div>
     <div class="card"><h2 id="rtitle"></h2><div id="roles"></div></div></section>
 
-  <section class="card" style="margin-top:16px"><h2>Roster <span class="faint" id="rcount"></span></h2>
+  <section class="grid g2">
+    <div class="card"><h2>Roster <span class="faint" id="rcount"></span></h2>
       <div class="sub">This week · follows every filter</div>
       <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Role</th><th>Team</th><th>Day</th></tr></thead>
-        <tbody id="roster"></tbody></table></div></section>
+        <tbody id="roster"></tbody></table></div></div>
+    <div class="card"><h2>Not signed up</h2>
+      <div class="sub">Registered since August but not this week · most recent first</div>
+      <div class="missing" id="missing"></div>
+      <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
+  </section>
 
   <section class="grid">
     <div class="card"><h2>Weapons</h2>
       <div class="sub">Players by main weapon (Weapon 1) · click a bar to filter</div>
       <div class="scroll-x" id="comp"></div></div>
-    <div class="card"><h2>Not signed up</h2>
-      <div class="sub">Registered since August but not this week · most recent first</div>
-      <div class="missing" id="missing"></div>
-      <button class="btn" id="copy" style="margin-top:10px">Copy names</button></div>
   </section>
 
   <section class="card"><h2>Attendance trend</h2>
