@@ -39,6 +39,12 @@
   .card .sub { color: var(--faint); font-size: 12px; margin-bottom: 12px; }
   .grid { display: grid; gap: 16px; }
   .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .role { background: var(--raised); border-radius: 6px; padding: 10px 12px; text-align: left; border: 1px solid transparent; }
+  .role:hover { border-color: var(--line); }
+  .role.on { border-color: var(--gold); }
+  .role .v { font-size: 24px; font-weight: 700; }
+  .role .v small { font-size: 12px; color: var(--faint); font-weight: 400; margin-left: 4px; }
   .g2 { grid-template-columns: 2fr 1fr; }
   .g2b { grid-template-columns: 1fr 1fr; }
 
@@ -103,11 +109,13 @@
     <div class="chips" id="chips"></div>
   </div>
 
-  <section class="grid g4" id="kpis"></section>
+  <section class="grid g3" id="kpis"></section>
+  <section class="card"><h2 id="rtitle"></h2><div class="sub">Role is worked out from weapons · click a role to filter</div>
+    <div class="grid g3" id="roles"></div></section>
 
   <section class="card" style="margin-top:16px"><h2>Roster <span class="faint" id="rcount"></span></h2>
       <div class="sub">This week · follows every filter</div>
-      <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Team</th><th>Day</th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Name</th><th>Weapons</th><th>Role</th><th>Team</th><th>Day</th></tr></thead>
         <tbody id="roster"></tbody></table></div></section>
 
   <section class="grid g2">
@@ -151,7 +159,12 @@ const FAMILY = {
   "Heavenwill Gauntlets": "Gauntlets",
 };
 const FAMILIES = ["Sword", "Spear", "Blade", "Twinblades", "Rope Dart", "Gauntlets", "Umbrella", "Fan"];
-const HEAL = new Set(["Umbrella", "Fan"]);  // healers inferred from weapon family
+const HEALER_W = new Set(["Panacea Fan", "Soulshade Umbrella"]);
+const TANK_W = new Set(["Thundercry Blade", "Stormbreaker Spear"]);
+const ROLES = [["healer", "✚ Healer"], ["tank", "🛡 Tank"], ["dps", "🗡 DPS"]];
+// Healer weapon wins, then tank weapon, otherwise DPS
+const roleOf = p => [p.weapon1, p.weapon2].some(w => HEALER_W.has(w)) ? "healer"
+  : [p.weapon1, p.weapon2].some(w => TANK_W.has(w)) ? "tank" : "dps";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 // Same person, different names (old website name -> Discord nickname). Add more as "old": "discord".
@@ -175,7 +188,7 @@ const fmtWeek = w => new Date(w + "T00:00:00Z").toLocaleDateString("en-GB", { da
 let weeks = [];          // sorted week keys
 const data = {};         // week -> [players]
 let week = currentWeek();
-const f = { day: null, team: null, family: null, player: null };  // cross-filter state
+const f = { day: null, role: null, team: null, family: null, player: null };  // cross-filter state
 let relSort = "rel";
 
 const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
@@ -200,7 +213,8 @@ async function loadCurrent() {
 
 /* ---------- Filters ---------- */
 const match = {
-  day: (p, v) => v === "reserve" ? p.isReserve : !p.isReserve && (v === "Saturday" ? sat(p) : sun(p)),
+  day: (p, v) => v === "Saturday" ? sat(p) : sun(p),
+  role: (p, v) => roleOf(p) === v,
   team: (p, v) => p.team === v,
   family: (p, v) => fams(p).includes(v),
   player: (p, v) => key(p.name) === v,
@@ -254,7 +268,7 @@ function render() {
 }
 
 function renderChips() {
-  const name = { day: v => v === "reserve" ? "Reserve" : v, team: v => v === "attack" ? "Attack" : "Defend",
+  const name = { day: v => v, role: v => ROLES.find(r => r[0] === v)[1], team: v => v === "attack" ? "Attack" : "Defend",
     family: v => v, player: v => (Object.values(data).flat().find(p => key(p.name) === v) || {}).name || v };
   const act = Object.entries(f).filter(([, v]) => v !== null);
   $("chips").innerHTML = act.map(([k, v]) => `<button class="chip" data-k="${k}">${esc(name[k](v))} ✕</button>`).join("")
@@ -274,26 +288,30 @@ function spark(values, max) {
 
 function renderKpis(players, prev, missing, wi) {
   const base = filtered(players, "day"), basePrev = filtered(prev, "day");
-  const count = (list, d) => list.filter(p => match.day(p, d)).length;
+  const count = (list, d) => d ? list.filter(p => match.day(p, d)).length : list.length;
   const hist = d => weeks.slice(Math.max(0, wi - 11), wi + 1).map(w => count(filtered(data[w] || [], "day"), d));
-  const tiles = [
-    ["Saturday", "Saturday main", count(base, "Saturday"), DAY_MAX, count(basePrev, "Saturday")],
-    ["Sunday", "Sunday main", count(base, "Sunday"), DAY_MAX, count(basePrev, "Sunday")],
-    ["reserve", "Reserve", count(base, "reserve"), RESERVE_MAX, count(basePrev, "reserve")],
-  ];
-  $("kpis").innerHTML = tiles.map(([d, label, n, max, before]) => {
-    const dl = n - before, low = d !== "reserve" && n < LOW_DAY;
-    return `<div class="card kpi ${f.day === d ? "on" : ""}" data-d="${d}">
+  const tiles = [[null, "Registered this week"], ["Saturday", "Can play Saturday"], ["Sunday", "Can play Sunday"]];
+  $("kpis").innerHTML = tiles.map(([d, label]) => {
+    const n = count(base, d), dl = n - count(basePrev, d), max = d ? DAY_MAX : DAY_MAX * 2;
+    const res = d ? base.filter(p => match.day(p, d) && p.isReserve).length : 0;
+    return `<div class="card kpi ${f.day === d ? "on" : ""}" data-d="${d ?? ""}">
       <div class="label">${label}</div>
-      <div class="v">${n} <small>/ ${max}</small>${wi > 0 && dl ? `<span class="delta ${dl > 0 ? "up" : "down"}">${dl > 0 ? "▲" : "▼"} ${Math.abs(dl)}</span>` : ""}</div>
-      <div class="meter"><i class="${low ? "low" : ""}" style="width:${Math.min(100, n / max * 100)}%"></i></div>
-      ${spark(hist(d), max)}</div>`;
-  }).join("") + `<div class="card kpi" id="kmiss">
-      <div class="label">Not signed up</div>
-      <div class="v" style="color:${missing.length ? "var(--red)" : "var(--text)"}">${missing.length} <small>players</small></div>
-      <div class="sub" style="margin:8px 0 0">${missing.slice(0, 3).map(p => esc(p.name)).join(", ") || "Everyone's in"}${missing.length > 3 ? "…" : ""}</div></div>`;
-  $("kpis").querySelectorAll("[data-d]").forEach(t => t.onclick = () => toggle("day", t.dataset.d));
-  $("kmiss").onclick = () => $("missing").scrollIntoView({ behavior: "smooth", block: "center" });
+      <div class="v">${n}${d ? ` <small>/ ${DAY_MAX}</small>` : ""}${wi > 0 && dl ? `<span class="delta ${dl > 0 ? "up" : "down"}">${dl > 0 ? "▲" : "▼"} ${Math.abs(dl)}</span>` : ""}</div>
+      <div class="meter"><i class="${d && n < LOW_DAY ? "low" : ""}" style="width:${Math.min(100, n / max * 100)}%"></i></div>
+      ${res ? `<div class="faint" style="font-size:12px">${res} on reserve</div>` : spark(hist(d), max)}</div>`;
+  }).join("");
+  $("kpis").querySelectorAll("[data-d]").forEach(t => t.onclick = () => { f.day = t.dataset.d || null; render(); });
+
+  // Role breakdown for the selected box
+  const group = filtered(players, "role");
+  $("rtitle").textContent = "Roles · " + (f.day ? "can play " + f.day : "everyone registered");
+  $("roles").innerHTML = ROLES.map(([r, label]) => {
+    const n = group.filter(p => roleOf(p) === r).length;
+    return `<button class="role ${f.role === r ? "on" : ""}" data-r="${r}"><div class="label">${label}</div>
+      <div class="v">${n}<small>${group.length ? Math.round(n / group.length * 100) + "%" : ""}</small></div>
+      <div class="meter"><i style="width:${group.length ? n / group.length * 100 : 0}%"></i></div></button>`;
+  }).join("");
+  $("roles").querySelectorAll("[data-r]").forEach(b => b.onclick = () => toggle("role", b.dataset.r));
 }
 
 function renderComp(players, wi) {
@@ -310,16 +328,15 @@ function renderComp(players, wi) {
   const x = v => L + v / max * bw;
   $("comp").innerHTML = `<svg viewBox="0 0 ${W} ${rows.length * rowH}" style="width:100%;max-width:640px">${rows.map((r, i) => {
     const y = i * rowH, dim = f.family && f.family !== r.fam ? "dim" : "";
-    const heal = HEAL.has(r.fam) ? " ✚" : "";
     return `<g class="hit ${dim}" data-f="${r.fam}">
       <rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
-      <text x="0" y="${y + 17}" style="fill:${f.family === r.fam ? "var(--gold)" : "var(--text)"}">${r.fam}${heal}</text>
+      <text x="0" y="${y + 17}" style="fill:${f.family === r.fam ? "var(--gold)" : "var(--text)"}">${r.fam}</text>
       <rect x="${L}" y="${y + 6}" width="${bw}" height="14" rx="2" fill="var(--bg)"/>
       <rect x="${L}" y="${y + 6}" width="${x(r.atk) - L}" height="14" fill="var(--gold)" class="${f.team === "defend" ? "dim" : ""}"/>
       <rect x="${x(r.atk)}" y="${y + 6}" width="${x(r.atk + r.def) - x(r.atk)}" height="14" fill="var(--gray)" class="${f.team === "attack" ? "dim" : ""}"/>
       ${r.avg ? `<line x1="${x(r.avg)}" x2="${x(r.avg)}" y1="${y + 3}" y2="${y + 23}" stroke="var(--text)" stroke-width="1.5"/>` : ""}
       <text x="${x(r.atk + r.def) + 6}" y="${y + 17}">${r.atk + r.def || ""}</text></g>`;
-  }).join("")}</svg><div class="faint" style="font-size:11px;margin-top:4px">✚ healer families (inferred from weapon)</div>`;
+  }).join("")}</svg>`;
   $("comp").querySelectorAll("[data-f]").forEach(g => g.onclick = () => toggle("family", g.dataset.f));
 }
 
@@ -378,9 +395,10 @@ function renderRoster(players) {
   $("roster").innerHTML = list.map(p => `<tr class="${f.player === key(p.name) ? "sel" : ""}" data-p="${esc(key(p.name))}">
       <td>${esc(p.name)}${p.isReserve ? ' <span class="tag">reserve</span>' : ""}</td>
       <td class="muted">${esc(p.weapon1)} / ${esc(p.weapon2)}</td>
+      <td class="muted">${ROLES.find(r => r[0] === roleOf(p))[1]}</td>
       <td><span class="tag ${p.team}">${p.team === "attack" ? "Attack" : p.team === "defend" ? "Defend" : "—"}</span></td>
       <td class="muted">${esc(p.avail)}</td></tr>`).join("")
-    || `<tr><td colspan="4" class="empty">${players.length ? "No one matches these filters" : "No registrations this week"}</td></tr>`;
+    || `<tr><td colspan="5" class="empty">${players.length ? "No one matches these filters" : "No registrations this week"}</td></tr>`;
   $("roster").querySelectorAll("[data-p]").forEach(r => r.onclick = () => toggle("player", r.dataset.p));
 }
 
