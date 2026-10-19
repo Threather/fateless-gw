@@ -156,18 +156,10 @@ firebase_admin.initialize_app(credentials.Certificate(str(HERE / "firebase-key.j
                               {"databaseURL": DATABASE_URL})
 
 LOGO = HERE / "assets" / "fateless-logo.png"
-INTRO_TITLE = "⚔️ GUILD WAR REGISTRATION"
-TEAM_NAMES = {"attack": "⚔️ Attack", "defend": "🛡️ Defend"}
-DAY_EMOJI = {"Saturday": "📅", "Sunday": "📆", "Sat & Sun": "🔥"}
+INTRO_TITLE = "GUILD WAR REGISTRATION"
+TEAM_NAMES = {"attack": "Attack", "defend": "Defend"}
+DAYS = ["Saturday", "Sunday", "Sat & Sun"]
 GOLD = 0xD4A24C
-
-
-def weapon_emoji(weapon):
-    for word, emoji in [("Sword", "⚔️"), ("Spear", "🔱"), ("Twinblades", "🌀"), ("Blade", "🗡️"),
-                        ("Umbrella", "☂️"), ("Fan", "🪭"), ("Rope Dart", "🪢"), ("Gauntlets", "🥊")]:
-        if word in weapon:
-            return emoji
-    return "⚔️"
 
 
 client = discord.Client(intents=discord.Intents.default())
@@ -186,11 +178,10 @@ def build_intro():
     sun = sum(plays_sun(p) for p in main)
     reserves = len(players) - len(main)
     embed = discord.Embed(title=INTRO_TITLE, color=GOLD, description=(
-        "The battlefield awaits, **Fateless**.\n"
-        "Press **Register** below, pick your weapons, team and day — done in 10 seconds.\n​"))
-    embed.add_field(name="📅 Saturday", value=f"{bar(sat, DAY_MAX)}\n**{sat}** / {DAY_MAX}")
-    embed.add_field(name="📆 Sunday", value=f"{bar(sun, DAY_MAX)}\n**{sun}** / {DAY_MAX}")
-    embed.add_field(name="🪑 Reserve", value=f"​\n**{reserves}**")
+        "Press **Register**, pick your weapons, team and day."))
+    embed.add_field(name="Saturday", value=f"{bar(sat, DAY_MAX)}\n**{sat}** / {DAY_MAX}")
+    embed.add_field(name="Sunday", value=f"{bar(sun, DAY_MAX)}\n**{sun}** / {DAY_MAX}")
+    embed.add_field(name="Reserve", value=f"​\n**{reserves}**")
     embed.set_thumbnail(url="attachment://logo.png")
     embed.set_footer(text=f"Week of {week_key()} • Resets every Monday • Name = your server nickname")
     return embed
@@ -206,25 +197,23 @@ async def refresh_intros():
 
 
 class RegisterForm(discord.ui.View):
-    """The private form a member sees after clicking Register."""
+    """The private form: weapon dropdowns, one-tap buttons for team and day."""
 
     def __init__(self, name, last=None):
         super().__init__(timeout=600)
         self.name = name
         self.answers = {k: last[k] for k in ("weapon1", "weapon2", "team", "avail")} if last else {}
-        weapons = [(w, w, weapon_emoji(w)) for w in sorted(WEAPONS)]
-        self.add_select("weapon1", "🗡️  Choose your main weapon", weapons, 0)
-        self.add_select("weapon2", "🗡️  Choose your second weapon", weapons, 1)
-        self.add_select("team", "🚩  Attack or Defend?",
-                        [(v[3:], k, v[:2]) for k, v in TEAM_NAMES.items()], 2)
-        self.add_select("avail", "📅  Which day can you play?",
-                        [(d, d, e) for d, e in DAY_EMOJI.items()], 3)
+        self.add_select("weapon1", "Main weapon", 0)
+        self.add_select("weapon2", "Second weapon", 1)
+        self.choice_buttons = {"team": [], "avail": []}
+        for value, label in TEAM_NAMES.items():
+            self.add_choice("team", value, label, 2)
+        for day in DAYS:
+            self.add_choice("avail", day, day, 3)
 
-    def add_select(self, key, placeholder, choices, row):
-        opts = [discord.SelectOption(label=label, value=value, emoji=emoji)
-                for label, value, emoji in choices]
-        for opt in opts:  # pre-fill last week's pick
-            opt.default = opt.value == self.answers.get(key)
+    def add_select(self, key, placeholder, row):
+        opts = [discord.SelectOption(label=w, value=w, default=w == self.answers.get(key))
+                for w in sorted(WEAPONS)]
         select = discord.ui.Select(placeholder=placeholder, options=opts, row=row)
 
         async def picked(interaction):
@@ -235,68 +224,71 @@ class RegisterForm(discord.ui.View):
         select.callback = picked
         self.add_item(select)
 
-    @discord.ui.button(label="Confirm Registration", emoji="✅",
-                       style=discord.ButtonStyle.success, row=4)
-    async def submit(self, interaction, button):
-        await self.finish(interaction)
+    def add_choice(self, key, value, label, row):
+        button = discord.ui.Button(label=label, row=row)
+        button.value = value
 
-    async def finish(self, interaction):
-        labels = {"weapon1": "Weapon 1", "weapon2": "Weapon 2", "team": "Team", "avail": "Day"}
+        async def clicked(interaction):
+            self.answers[key] = value
+            self.paint()
+            await interaction.response.edit_message(view=self)
+        button.callback = clicked
+        self.choice_buttons[key].append(button)
+        self.add_item(button)
+        self.paint()
+
+    def paint(self):
+        for key, buttons in self.choice_buttons.items():
+            for b in buttons:
+                b.style = (discord.ButtonStyle.primary if self.answers.get(key) == b.value
+                           else discord.ButtonStyle.secondary)
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success, row=4)
+    async def submit(self, interaction, button):
+        labels = {"weapon1": "Main weapon", "weapon2": "Second weapon", "team": "Team", "avail": "Day"}
         missing = [labels[k] for k in labels if k not in self.answers]
         if missing:
             await interaction.response.send_message(
-                "⚠️ Still need: **" + "**, **".join(missing) + "**", ephemeral=True)
+                "Still need: **" + "**, **".join(missing) + "**", ephemeral=True)
             return
         a = self.answers
         ok, r = register_player(self.name, a["weapon1"], a["weapon2"], None,
                                 a["team"], a["avail"], False)
         if not ok:
-            await interaction.response.send_message(f"❌ {r}", ephemeral=True)
+            await interaction.response.send_message(r, ephemeral=True)
             return
-        await interaction.response.edit_message(
-            content="✅ **You're in!** See you on the battlefield.", view=None)
+        await interaction.response.edit_message(content="You're registered.", embed=None, view=None)
 
-        slot = f"{'🪑 Reserve' if r['isReserve'] else '🏆 Main Roster'} #{r['slot']}"
+        slot = f"{'Reserve' if r['isReserve'] else 'Main roster'} #{r['slot']}"
         embed = discord.Embed(color=0xE67E22 if r["isReserve"] else 0x2ECC71, description=(
-            f"### {r['name']} has joined the war\n"
-            f"{weapon_emoji(r['weapon1'])} **{r['weapon1']}**  ·  "
-            f"{weapon_emoji(r['weapon2'])} **{r['weapon2']}**"))
+            f"**{r['name']}** registered\n{r['weapon1']} / {r['weapon2']}"))
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="Team", value=TEAM_NAMES[r["team"]])
-        embed.add_field(name="Day", value=f"{DAY_EMOJI[r['avail']]} {r['avail']}")
+        embed.add_field(name="Day", value=r["avail"])
         embed.add_field(name="Slot", value=slot)
         await interaction.channel.send(embed=embed)
         await refresh_intros()
 
 
 class RegisterButton(discord.ui.View):
-    """The permanent button under the register message."""
+    """The permanent buttons under the register message."""
 
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Register", emoji="⚔️", style=discord.ButtonStyle.success,
-                       custom_id="gw_register")
+    @discord.ui.button(label="Register", style=discord.ButtonStyle.success, custom_id="gw_register")
     async def open_form(self, interaction, button):
         await interaction.response.defer(ephemeral=True, thinking=True)
         name = interaction.user.display_name
         last = await asyncio.to_thread(last_registration, name)
-        view = RegisterForm(name, last)
-        if last:
-            text = (f"Registering as **{name}**\n\nLast time: **{last['weapon1']} / {last['weapon2']}** · "
-                    f"{TEAM_NAMES[last['team']]} · {last['avail']}\n"
-                    "Press **Same as last week**, or change a dropdown and press **Confirm**.")
-            same = discord.ui.Button(label="Same as last week", emoji="⚡",
-                                     style=discord.ButtonStyle.primary, row=4)
-            same.callback = view.finish
-            view.add_item(same)
-        else:
-            text = f"Registering as **{name}**\nPick all four, then press **Confirm Registration**."
+        text = f"Registering as **{name}**"
+        text += ("\nLast week's picks are filled in. Press **Confirm**, or change something first."
+                 if last else "\nPick your weapons, team and day, then press **Confirm**.")
         embed = discord.Embed(color=GOLD, description=text)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        await interaction.followup.send(embed=embed, view=RegisterForm(name, last), ephemeral=True)
 
-    @discord.ui.button(label="Open Dashboard", emoji="📊", style=discord.ButtonStyle.secondary,
+    @discord.ui.button(label="Open Dashboard", style=discord.ButtonStyle.secondary,
                        custom_id="gw_dashboard")
     async def open_dashboard(self, interaction, button):
         await interaction.response.launch_activity()
