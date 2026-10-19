@@ -637,7 +637,7 @@ function placeObj(src, label, wx, wy) {
   el.className = 'marker' + (label === 'Boss' ? ' boss' : '');
   el.style.left = wx + 'px';
   el.style.top  = wy + 'px';
-  el.innerHTML = `<img src="${src}"><span class="mlabel">${label}</span><button class="del-btn" onclick="this.parentElement.remove()">✕</button>`;
+  el.innerHTML = `<img src="${src}"><span class="mlabel">${label}</span><button class="del-btn">✕</button>`;
   makeDraggable(el);
   markersLayer.appendChild(el);
 }
@@ -654,13 +654,22 @@ function placePly(p, wx, wy) {
   el.style.left   = wx + 'px';
   el.style.top    = wy + 'px';
   const initials  = p.name.slice(0,2).toUpperCase();
-  el.innerHTML = `<div class="pmarker-inner ${roleOf(p)}">${initials}</div><span class="pmlabel">${p.name}</span><button class="del-btn" onclick="removePly(this)">✕</button>`;
+  el.innerHTML = `<div class="pmarker-inner ${roleOf(p)}">${initials}</div><span class="pmlabel">${p.name}</span><button class="del-btn">✕</button>`;
   makeDraggable(el);
   markersLayer.appendChild(el);
 
   const chips = document.querySelectorAll(`.player-chip[data-name="${p.name}"]`);
   chips.forEach(c => c.classList.add('placed'));
 }
+
+// Delete buttons are wired here, not inline: Discord blocks inline onclick handlers.
+['click', 'touchend'].forEach(type => markersLayer.addEventListener(type, e => {
+  const btn = e.target.closest('.del-btn');
+  if (!btn) return;
+  e.preventDefault(); e.stopPropagation();
+  if (btn.parentElement.classList.contains('pmarker')) window.removePly(btn);
+  else btn.parentElement.remove();
+}, true));
 
 window.removePly = function(btn) {
   const el   = btn.parentElement;
@@ -930,6 +939,27 @@ window.openHelp = function() {
 window.closeHelp = function() {
   document.getElementById('help-modal').style.display = 'none';
 };
+
+// ── REWIRE INLINE HANDLERS ──
+// Discord's Activity security policy blocks inline on*="..." attributes, so every
+// such attribute is turned into a real event listener here.
+const callFn = (code, el, e) => {
+  if (code === 'event.preventDefault()') return e.preventDefault();
+  if (code === 'brushSize=+this.value') { brushSize = +el.value; return; }
+  if (code === 'if(event.target===this)closeHelp()') { if (e.target === el) window.closeHelp(); return; }
+  const m = code.match(/^(\w+)\((.*)\)$/);
+  if (!m || typeof window[m[1]] !== 'function') return;
+  const arg = m[2].trim();
+  const val = arg === '' ? [] : arg === 'this' ? [el] : arg === 'event' ? [e] : [arg.replace(/^'|'$/g, '')];
+  window[m[1]](...val);
+};
+document.querySelectorAll('*').forEach(el => {
+  for (const { name, value } of [...el.attributes]) {
+    if (!name.startsWith('on')) continue;
+    el.removeAttribute(name);
+    el.addEventListener(name.slice(2), e => callFn(value.trim(), el, e));
+  }
+});
 </script>
 </body>
 </html>
