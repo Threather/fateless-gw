@@ -335,6 +335,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 <script type="module">
 // Inside the Discord Activity, Firebase is reached through the /fb URL mapping (no SDK).
 const DB = "/fb";
+// Same hidden players as the dashboard (lowercase)
+const HIDDEN = new Set(["xiaochuan", "teddy", "moonlily", "oggyhveilip", "shiyokikasachan"]);
 // Role from the main weapon (Weapon 1), same rule as the dashboard
 const HEALER_W = new Set(["Panacea Fan", "Soulshade Umbrella"]);
 const TANK_W = new Set(["Thundercry Blade", "Stormbreaker Spear"]);
@@ -869,7 +871,7 @@ let allPlayers = [];
 async function loadPlayers() {
   try {
     const val = await (await fetch(`${DB}/guild_wars/${getWeekKey()}/registrations.json`)).json();
-    allPlayers = val ? Object.entries(val).map(([k,v]) => ({_key:k,...v})) : [];
+    allPlayers = val ? Object.entries(val).map(([k,v]) => ({_key:k,...v})).filter(p => !HIDDEN.has(String(p.name || '').trim().toLowerCase())) : [];
     renderPlayerSidebar();
   } catch (e) {}
 }

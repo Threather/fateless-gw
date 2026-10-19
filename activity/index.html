@@ -286,8 +286,11 @@ const sat = p => p.avail === "Saturday" || p.avail === "Sat & Sun";
 const sun = p => p.avail === "Sunday" || p.avail === "Sat & Sun";
 const fams = p => [...new Set([FAMILY[p.weapon1], FAMILY[p.weapon2]].filter(Boolean))];
 
+// Players hidden from every list (data is kept in Firebase). Lowercase names.
+const HIDDEN = new Set(["xiaochuan", "teddy", "moonlily", "oggyhveilip", "shiyokikasachan"]);
 function ingest(w, val) {
-  data[w] = Object.values(val || {}).filter(p => p && p.name).sort((a, b) => (a.registeredAt || 0) - (b.registeredAt || 0));
+  data[w] = Object.values(val || {}).filter(p => p && p.name && !HIDDEN.has(key(p.name)))
+    .sort((a, b) => (a.registeredAt || 0) - (b.registeredAt || 0));
 }
 async function loadAll() {
   const all = await (await fetch(`${DB}/guild_wars.json`)).json() || {};
