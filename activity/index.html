@@ -154,7 +154,9 @@ const FAMILIES = ["Sword", "Spear", "Blade", "Twinblades", "Rope Dart", "Gauntle
 const HEAL = new Set(["Umbrella", "Fan"]);  // healers inferred from weapon family
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const key = n => String(n || "").trim().toLowerCase();
+// Same person, different names (old website name -> Discord nickname). Add more as "old": "discord".
+const ALIASES = { "rasmach": "xspear" };
+const key = n => { const k = String(n || "").trim().toLowerCase(); return ALIASES[k] || k; };
 
 // Keep the Discord frame happy (Embedded App handshake); the page itself needs no sign-in.
 const params = new URLSearchParams(location.search);

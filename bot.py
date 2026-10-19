@@ -80,13 +80,22 @@ def regs_ref():
     return db.reference(f"guild_wars/{week_key()}/registrations")
 
 
+# Same person, different names (old website name -> Discord nickname).
+ALIASES = {"rasmach": "xspear"}
+
+
+def same_player(a, b):
+    a, b = a.strip().lower(), b.strip().lower()
+    return ALIASES.get(a, a) == ALIASES.get(b, b)
+
+
 def last_registration(name, weeks_back=8):
     """This member's most recent entry from an earlier week, or None."""
     weeks = sorted((db.reference("guild_wars").get(shallow=True) or {}), reverse=True)
     for wk in [w for w in weeks if w < week_key()][:weeks_back]:
         regs = db.reference(f"guild_wars/{wk}/registrations").get() or {}
         for p in regs.values():
-            if p.get("name", "").lower() == name.lower() and p.get("team") in ("attack", "defend"):
+            if same_player(p.get("name", ""), name) and p.get("team") in ("attack", "defend"):
                 return p
     return None
 
